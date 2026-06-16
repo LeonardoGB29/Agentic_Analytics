@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agente Analítico — Retail TPC-DS</title>
+
+<!-- Fuentes (opcionales: si no hay internet, cae a fuentes del sistema) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:#0E1320;font-family:'Inter',system-ui,sans-serif;color:#E6E8EC;}
+  ::selection{background:rgba(141,198,63,0.3);}
+  *:focus-visible{outline:2px solid #8CC63F;outline-offset:2px;}
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-thumb{background:rgba(157,161,166,0.25);border-radius:999px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+
+  @keyframes scblink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+  @keyframes scpulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* pseudo-estados (en dc eran style-focus / style-hover / style-active) */
+  .q:focus{border-color:#8CC63F !important;}
+  .ask:hover{filter:brightness(1.08);}
+  .ask:active{transform:translateY(1px);}
+  .chip:hover{border-color:rgba(141,198,63,0.45) !important;color:#fff !important;}
+
+  @media (max-width:880px){
+    [data-app]{flex-direction:column !important;height:auto !important;min-height:100vh !important;overflow:auto !important;}
+    [data-sidebar]{width:auto !important;max-width:none !important;border-right:none !important;border-bottom:1px solid rgba(157,161,166,0.14) !important;overflow:visible !important;}
+    [data-main]{height:auto !important;}
+    [data-chat]{min-height:420px !important;}
+  }
+  @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important;}}
+</style>
+</head>
+
+<body>
+<div id="app"></div>
+
+<script>
+"use strict";
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   DATOS TIPEADOS (mock)
+   Cuando conectes el backend (server.py), estos objetos vendrán del servidor:
+     fetch('/api/query', {method:'POST', body: JSON.stringify({question, engine})})
+   y el resultado de skill_5_to_json() tiene exactamente esta misma estructura.
+   ══════════════════════════════════════════════════════════════════════════════ */
+const RESPONSES = {
+  productos: {
+    heroValue:'18 420', heroUnit:'unidades', heroLabel:'Producto A — el más vendido del catálogo',
+    summary:'El catálogo está muy concentrado: el Top 3 acumula casi el 45 % de las unidades. «Producto A» lidera con 18 420 unidades, un 20 % por encima del segundo. Conviene asegurar su disponibilidad de stock.',
+    sql:"SELECT i.i_item_desc, SUM(ss.ss_quantity) AS unidades\nFROM store_sales ss\nJOIN item i ON ss.ss_item_sk = i.i_item_sk\nGROUP BY i.i_item_desc\nORDER BY unidades DESC\nLIMIT 10",
+    hive:24.8, spark:6.3, matched:17920,
+    cols:['producto','unidades'],
+    rows:[['Producto A','18 420'],['Producto B','15 310'],['Producto C','14 002'],['Producto D','11 890'],['Producto E','9 740'],['Producto F','8 905'],['Producto G','7 612'],['Producto H','6 480'],['Producto I','5 933'],['Producto J','5 110']],
+    chartTitle:'Unidades vendidas · Top 8',
+    chart:[
+      {label:'Producto A',value:18420,valueFmt:'18 420'},{label:'Producto B',value:15310,valueFmt:'15 310'},
+      {label:'Producto C',value:14002,valueFmt:'14 002'},{label:'Producto D',value:11890,valueFmt:'11 890'},
+      {label:'Producto E',value:9740, valueFmt:'9 740'}, {label:'Producto F',value:8905, valueFmt:'8 905'},
+      {label:'Producto G',value:7612, valueFmt:'7 612'}, {label:'Producto H',value:6480, valueFmt:'6 480'},
+    ],
+  },
+  tienda: {
+    heroValue:'$2,84 M', heroUnit:'ingresos', heroLabel:'Tienda Eastgate — la #1 de la red',
+    summary:'Las ventas están repartidas entre tiendas urbanas. «Eastgate» encabeza con $2,84 M, pero la diferencia con la quinta es de apenas 1,7×: una red equilibrada sin un único punto crítico.',
+    sql:"SELECT s.s_store_name, SUM(ss.ss_net_paid) AS ingresos\nFROM store_sales ss\nJOIN store s ON ss.ss_store_sk = s.s_store_sk\nGROUP BY s.s_store_name\nORDER BY ingresos DESC\nLIMIT 10",
+    hive:31.2, spark:7.9, matched:102,
+    cols:['tienda','ingresos'],
+    rows:[['Tienda Eastgate','$2,84 M'],['Tienda Lakeview','$2,51 M'],['Tienda Northpark','$2,18 M'],['Tienda Riverside','$1,97 M'],['Tienda Summit','$1,64 M'],['Tienda Brookside','$1,52 M'],['Tienda Fairview','$1,41 M'],['Tienda Glenwood','$1,28 M'],['Tienda Highgate','$1,12 M'],['Tienda Westend','$0,98 M']],
+    chartTitle:'Ingresos por tienda · Top 8',
+    chart:[
+      {label:'Eastgate',value:2.84,valueFmt:'$2,84 M'},{label:'Lakeview',value:2.51,valueFmt:'$2,51 M'},
+      {label:'Northpark',value:2.18,valueFmt:'$2,18 M'},{label:'Riverside',value:1.97,valueFmt:'$1,97 M'},
+      {label:'Summit',value:1.64,valueFmt:'$1,64 M'},{label:'Brookside',value:1.52,valueFmt:'$1,52 M'},
+      {label:'Fairview',value:1.41,valueFmt:'$1,41 M'},{label:'Glenwood',value:1.28,valueFmt:'$1,28 M'},
+    ],
+  },
+  mes: {
+    heroValue:'$4,12 M', heroUnit:'ingresos', heroLabel:'Diciembre — mes pico del año',
+    summary:'La estacionalidad es marcada: Diciembre concentra el pico de ingresos ($4,12 M), un 12 % sobre Noviembre. El segundo semestre supera con claridad al primero: clave para planear inventario.',
+    sql:"SELECT d.d_moy AS mes, SUM(ss.ss_net_paid) AS ingresos\nFROM store_sales ss\nJOIN date_dim d ON ss.ss_sold_date_sk = d.d_date_sk\nGROUP BY d.d_moy\nORDER BY ingresos DESC",
+    hive:19.5, spark:5.1, matched:12,
+    cols:['mes','ingresos'],
+    rows:[['Diciembre','$4,12 M'],['Noviembre','$3,68 M'],['Julio','$2,94 M'],['Agosto','$2,71 M'],['Marzo','$2,40 M'],['Octubre','$2,22 M'],['Mayo','$2,05 M'],['Junio','$1,98 M'],['Abril','$1,86 M'],['Septiembre','$1,74 M'],['Enero','$1,52 M'],['Febrero','$1,38 M']],
+    chartTitle:'Ingresos por mes · Top 8',
+    chart:[
+      {label:'Diciembre',value:4.12,valueFmt:'$4,12 M'},{label:'Noviembre',value:3.68,valueFmt:'$3,68 M'},
+      {label:'Julio',value:2.94,valueFmt:'$2,94 M'},{label:'Agosto',value:2.71,valueFmt:'$2,71 M'},
+      {label:'Marzo',value:2.40,valueFmt:'$2,40 M'},{label:'Octubre',value:2.22,valueFmt:'$2,22 M'},
+      {label:'Mayo',value:2.05,valueFmt:'$2,05 M'},{label:'Junio',value:1.98,valueFmt:'$1,98 M'},
+    ],
+  },
+  clientes: {
+    heroValue:'$48 920', heroUnit:'en compras', heroLabel:'Claudia Martínez — cliente top',
+    summary:'La base de clientes tiene una cola larga: el mejor cliente gastó $48 920, pero ninguno supera el 0,3 % del total. No hay dependencia de cuentas individuales, lo que reduce el riesgo de concentración.',
+    sql:"SELECT c.c_first_name, c.c_last_name, SUM(ss.ss_net_paid) AS gasto\nFROM store_sales ss\nJOIN customer c ON ss.ss_customer_sk = c.c_customer_sk\nGROUP BY c.c_first_name, c.c_last_name\nORDER BY gasto DESC\nLIMIT 10",
+    hive:28.7, spark:8.4, matched:24580,
+    cols:['cliente','gasto'],
+    rows:[['Claudia Martínez','$48 920'],['Diego Fuentes','$44 105'],['Renata Ospina','$41 780'],['Mateo Carvajal','$39 240'],['Lucía Bermúdez','$36 510'],['Andrés Pineda','$34 880'],['Sofía Quintero','$32 145'],['Tomás Vargas','$30 770'],['Valentina Ríos','$28 990'],['Camilo Herrera','$27 305']],
+    chartTitle:'Gasto por cliente · Top 8',
+    chart:[
+      {label:'C. Martínez',value:48920,valueFmt:'$48 920'},{label:'D. Fuentes',value:44105,valueFmt:'$44 105'},
+      {label:'R. Ospina',value:41780,valueFmt:'$41 780'},{label:'M. Carvajal',value:39240,valueFmt:'$39 240'},
+      {label:'L. Bermúdez',value:36510,valueFmt:'$36 510'},{label:'A. Pineda',value:34880,valueFmt:'$34 880'},
+      {label:'S. Quintero',value:32145,valueFmt:'$32 145'},{label:'T. Vargas',value:30770,valueFmt:'$30 770'},
+    ],
+  },
+};
+
+const OUTPUT_DEFS = [
+  {key:'resumen', label:'Resumen (insight)'},
+  {key:'sql',     label:'SQL generado'},
+  {key:'tiempos', label:'Tiempos'},
+  {key:'tabla',   label:'Tabla de resultados'},
+  {key:'grafica', label:'Gráficas'},
+];
+const ENGINE_DEFS = [
+  {v:'hive',  l:'Hive',  bg:'#15479B',                                 fg:'#fff'},
+  {v:'spark', l:'Spark', bg:'#8CC63F',                                 fg:'#0E1320'},
+  {v:'ambos', l:'Ambos', bg:'linear-gradient(135deg,#15479B,#8CC63F)', fg:'#fff'},
+];
+const ROWS_OPTS = [{label:'5',val:5},{label:'10',val:10},{label:'Todas',val:9999}];
+const EXAMPLES = [
+  '¿Qué tienda tuvo mayores ventas?',
+  '¿Cuáles son los 5 productos más vendidos?',
+  '¿Cuál fue el mes con mayores ingresos?',
+  '¿Cuáles son los diez mejores clientes?',
+];
+
+/* ── Estado global ──────────────────────────────────────────────────────────── */
+const state = {
+  input:'',
+  thinking:false,
+  engine:'ambos',
+  rowsVisible:5,
+  show:{resumen:true, sql:true, tiempos:true, tabla:true, grafica:true},
+  sections:{sistema:true, config:true, salida:true},
+  messages:[],   // {role:'user',text} | {role:'agent',resp,tab}
+};
+let _timer = null;
+
+/* ── Helpers ────────────────────────────────────────────────────────────────── */
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtNum(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+function fmtTime(v){ return v != null ? v.toFixed(1).replace('.', ',') + ' s' : '—'; }
+function mix(t){
+  const a=[0x15,0x47,0x9B], b=[0x8c,0xc6,0x3f];
+  return '#' + a.map((v,j)=>Math.round(v+(b[j]-v)*t).toString(16).padStart(2,'0')).join('');
+}
+function filterEngine(bars){
+  const e = state.engine;
+  if(e==='hive')  return bars.filter(b=>b.label==='Hive');
+  if(e==='spark') return bars.filter(b=>b.label==='Spark');
+  return bars;
+}
+function timeBarsFor(r){
+  let bars=[{label:'Hive',raw:r.hive,color:'#15479B'},{label:'Spark',raw:r.spark,color:'#8CC63F'}].filter(b=>b.raw!=null);
+  bars=filterEngine(bars);
+  const max=Math.max(...bars.map(b=>b.raw));
+  return bars.map(b=>({label:b.label,color:b.color,pct:b.raw/max*100,value:fmtTime(b.raw)}));
+}
+
+/* ── SKILL 1 (local) — intención. Al conectar Gemini, lo resuelve el servidor. ── */
+function infer(text){
+  const t=(text||'').toLowerCase();
+  if(t.includes('cliente'))                     return 'clientes';
+  if(t.includes('tienda'))                      return 'tienda';
+  if(t.includes('mes')||t.includes('mensual'))  return 'mes';
+  if(t.includes('ingreso'))                     return 'mes';
+  return 'productos';
+}
+
+/* ── Envío de la pregunta ───────────────────────────────────────────────────────
+   - Servido por HTTP (backend/server.py corriendo)  →  llama al API real:
+       /api/query → skill1 → skill2 → skill3 → skill4 → skill5
+   - Abierto con doble clic (file://)                →  usa datos mock locales.
+   Así el mismo archivo sirve para demo offline y para el sistema completo.
+   ──────────────────────────────────────────────────────────────────────────────── */
+const USE_BACKEND = location.protocol === 'http:' || location.protocol === 'https:';
+
+function send(text){
+  text=(text||'').trim();
+  if(!text || state.thinking) return;
+  state.messages.push({role:'user', text});
+  state.input='';
+  state.thinking=true;
+  render();
+
+  if(USE_BACKEND) sendBackend(text);
+  else            sendMock(text);
+}
+
+/* Backend real (Flask) */
+function sendBackend(text){
+  fetch('/api/query', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({question:text, engine:state.engine}),
+  })
+  .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+  .then(resp=>{
+    state.messages.push({role:'agent', resp, tab:'resumen'});  // resp = salida de skill_5_to_json
+    state.thinking=false;
+    render();
+  })
+  .catch(err=>{
+    console.error('[Agente] backend falló, usando mock:', err);
+    sendMock(text);  // si el backend no responde, cae a datos locales
+  });
+}
+
+/* Datos mock (offline). skill2/3/4/5 representados por RESPONSES[intent]. */
+function sendMock(text){
+  const intent=infer(text);  // skill1 local
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  clearTimeout(_timer);
+  _timer=setTimeout(()=>{
+    state.messages.push({role:'agent', resp:RESPONSES[intent], tab:'resumen'});
+    state.thinking=false;
+    render();
+  }, reduced ? 350 : 950);
+}
+
+/* ── Tabs disponibles según las salidas activadas ──────────────────────────────── */
+function tabDefs(){
+  const sh=state.show, defs=[];
+  if(sh.resumen)            defs.push({key:'resumen',    label:'Resumen'});
+  if(sh.sql||sh.tiempos)    defs.push({key:'ejecucion',  label:'Ejecución'});
+  if(sh.tabla)              defs.push({key:'resultados', label:'Resultados'});
+  if(sh.grafica)            defs.push({key:'grafica',    label:'Gráfica'});
+  return defs;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   RENDER
+   ══════════════════════════════════════════════════════════════════════════════ */
+function render(){
+  const sec=state.sections;
+  const engineLabel = state.engine==='ambos' ? 'Ambos' : (state.engine==='hive' ? 'Hive' : 'Spark');
+  const showWelcome = state.messages.length===0 && !state.thinking;
+
+  /* — Sidebar — */
+  const engineBtns = ENGINE_DEFS.map(d=>{
+    const active=state.engine===d.v;
+    const st=`flex:1;text-align:center;padding:8px 0;font-size:12.5px;font-weight:600;border:none;cursor:pointer;border-radius:8px;transition:all .2s;font-family:'Inter',sans-serif;`+(active?`background:${d.bg};color:${d.fg};`:'background:transparent;color:#9DA1A6;');
+    return `<button type="button" data-act="engine" data-arg="${d.v}" style="${st}">${d.l}</button>`;
+  }).join('');
+
+  const outputToggles = OUTPUT_DEFS.map(d=>{
+    const on=state.show[d.key];
+    const track=`width:38px;height:22px;border-radius:999px;position:relative;transition:background .2s;cursor:pointer;border:none;flex:none;background:${on?'#8CC63F':'rgba(157,161,166,0.22)'};`;
+    const knob=`position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:999px;background:#fff;transition:transform .2s;transform:translateX(${on?'16px':'0px'});`;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-size:13px;color:#E6E8EC;">${d.label}</span>
+      <button type="button" data-act="out" data-arg="${d.key}" style="${track}"><span style="${knob}"></span></button>
+    </div>`;
+  }).join('');
+
+  const sidebar = `
+  <aside data-sidebar style="width:300px;flex:none;overflow-y:auto;border-right:1px solid rgba(157,161,166,0.14);background:rgba(17,22,31,0.92);display:flex;flex-direction:column;gap:14px;padding:18px 16px;">
+
+    <div style="display:flex;align-items:center;gap:12px;padding:2px 2px 4px;">
+      <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(150deg,#15479B 0%,#15479B 42%,#8CC63F 100%);display:flex;align-items:flex-end;justify-content:center;gap:3px;padding:9px;box-shadow:0 6px 18px rgba(21,71,155,0.4);">
+        <div style="width:4px;height:7px;border-radius:2px;background:rgba(255,255,255,0.85);"></div>
+        <div style="width:4px;height:13px;border-radius:2px;background:rgba(255,255,255,0.95);"></div>
+        <div style="width:4px;height:10px;border-radius:2px;background:rgba(255,255,255,0.75);"></div>
+      </div>
+      <div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;color:#fff;letter-spacing:-0.01em;line-height:1.1;">Agente Analítico</div>
+        <div style="font-size:11.5px;color:#9DA1A6;margin-top:2px;">Retail TPC-DS</div>
+      </div>
+    </div>
+
+    <div style="background:#161B26;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px;">
+      <button type="button" data-act="sec" data-arg="sistema" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:transparent;border:none;cursor:pointer;padding:0;color:#9DA1A6;">
+        <span style="font-size:10.5px;letter-spacing:0.09em;text-transform:uppercase;font-weight:600;">Sistema</span>
+        <span style="font-size:11px;">${sec.sistema?'▾':'▸'}</span>
+      </button>
+      ${sec.sistema ? `<div style="margin-top:13px;display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="display:flex;align-items:center;gap:8px;font-size:13px;color:#E6E8EC;"><span style="width:10px;height:10px;border-radius:3px;background:#15479B;"></span>Apache Hive</span>
+          <span style="display:flex;align-items:center;gap:6px;font-size:11px;color:#8CC63F;"><span style="width:6px;height:6px;border-radius:999px;background:#8CC63F;animation:scpulse 2s infinite;"></span>v3.1.3</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="display:flex;align-items:center;gap:8px;font-size:13px;color:#E6E8EC;"><span style="width:10px;height:10px;border-radius:3px;background:#8CC63F;"></span>Apache Spark</span>
+          <span style="display:flex;align-items:center;gap:6px;font-size:11px;color:#8CC63F;"><span style="width:6px;height:6px;border-radius:999px;background:#8CC63F;animation:scpulse 2s infinite;"></span>v3.5.1</span>
+        </div>
+        <div style="height:1px;background:rgba(255,255,255,0.06);"></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:#9DA1A6;">Almacén</span><span style="color:#C9D1D9;font-family:'JetBrains Mono',monospace;">TPC-DS · sf 10</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:#9DA1A6;">Tabla base</span><span style="color:#C9D1D9;font-family:'JetBrains Mono',monospace;">store_sales</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:#9DA1A6;">Modelo LLM</span><span style="color:#C9D1D9;">Gemini 1.5 Pro</span></div>
+      </div>` : ''}
+    </div>
+
+    <div style="background:#161B26;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px;">
+      <button type="button" data-act="sec" data-arg="config" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:transparent;border:none;cursor:pointer;padding:0;color:#9DA1A6;">
+        <span style="font-size:10.5px;letter-spacing:0.09em;text-transform:uppercase;font-weight:600;">Configuración</span>
+        <span style="font-size:11px;">${sec.config?'▾':'▸'}</span>
+      </button>
+      ${sec.config ? `<div style="margin-top:13px;">
+        <div style="font-size:12px;color:#C9D1D9;margin-bottom:7px;">Motor de ejecución</div>
+        <div style="display:flex;gap:4px;background:#0E1320;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:4px;">${engineBtns}</div>
+      </div>` : ''}
+    </div>
+
+    <div style="background:#161B26;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px;">
+      <button type="button" data-act="sec" data-arg="salida" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:transparent;border:none;cursor:pointer;padding:0;color:#9DA1A6;">
+        <span style="font-size:10.5px;letter-spacing:0.09em;text-transform:uppercase;font-weight:600;">Salida del agente</span>
+        <span style="font-size:11px;">${sec.salida?'▾':'▸'}</span>
+      </button>
+      ${sec.salida ? `<div style="margin-top:13px;display:flex;flex-direction:column;gap:11px;">${outputToggles}</div>` : ''}
+    </div>
+
+  </aside>`;
+
+  /* — Mensajes — */
+  const messagesHtml = state.messages.map((msg,i)=>{
+    if(msg.role==='user'){
+      return `<div style="align-self:flex-end;max-width:74%;background:rgba(157,161,166,0.14);border:1px solid rgba(157,161,166,0.26);color:#EDEFF2;padding:12px 16px;border-radius:16px 16px 4px 16px;font-size:14.5px;line-height:1.5;">${esc(msg.text)}</div>`;
+    }
+    return renderAgent(msg, i);
+  }).join('');
+
+  const welcomeHtml = showWelcome ? `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:60px 20px;text-align:center;">
+      <div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(150deg,#15479B 0%,#8CC63F 100%);display:flex;align-items:flex-end;justify-content:center;gap:5px;padding:14px;box-shadow:0 10px 30px rgba(21,71,155,0.35);">
+        <div style="width:6px;height:12px;border-radius:3px;background:rgba(255,255,255,0.85);"></div>
+        <div style="width:6px;height:20px;border-radius:3px;background:rgba(255,255,255,0.95);"></div>
+        <div style="width:6px;height:16px;border-radius:3px;background:rgba(255,255,255,0.75);"></div>
+      </div>
+      <div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:#fff;margin-bottom:8px;">¿En qué puedo ayudarte?</div>
+        <div style="font-size:14px;color:#9DA1A6;max-width:420px;line-height:1.6;">Haz una pregunta en lenguaje natural sobre tus datos de retail TPC-DS y el agente generará SQL, lo ejecutará y presentará los resultados.</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
+        ${EXAMPLES.map((e,k)=>`<button type="button" class="chip" data-act="ex" data-arg="${k}" style="font-size:12.5px;color:#C9D1D9;background:#161B26;border:1px solid rgba(255,255,255,0.1);border-radius:999px;padding:8px 16px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;">${esc(e)}</button>`).join('')}
+      </div>
+    </div>` : '';
+
+  const thinkingHtml = state.thinking ? `
+    <div style="display:flex;gap:12px;align-self:flex-start;max-width:96%;">
+      <div style="flex:none;width:36px;height:36px;border-radius:10px;background:linear-gradient(160deg,#1E2533,#161B26);border:1px solid rgba(141,198,63,0.3);display:flex;align-items:flex-end;justify-content:center;gap:3px;padding:8px;">
+        <div style="width:4px;height:8px;border-radius:2px;background:#15479B;"></div>
+        <div style="width:4px;height:14px;border-radius:2px;background:#4E7E6E;"></div>
+        <div style="width:4px;height:11px;border-radius:2px;background:#8CC63F;"></div>
+      </div>
+      <div style="background:#161B26;border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:15px 18px;display:flex;align-items:center;gap:6px;">
+        <span style="width:7px;height:7px;border-radius:999px;background:#9DA1A6;animation:scblink 1.2s infinite;"></span>
+        <span style="width:7px;height:7px;border-radius:999px;background:#9DA1A6;animation:scblink 1.2s infinite;animation-delay:.2s;"></span>
+        <span style="width:7px;height:7px;border-radius:999px;background:#9DA1A6;animation:scblink 1.2s infinite;animation-delay:.4s;"></span>
+        <span style="font-size:12.5px;color:#9DA1A6;margin-left:8px;">Interpretando y generando SQL…</span>
+      </div>
+    </div>` : '';
+
+  const main = `
+  <main data-main style="flex:1;min-width:0;display:flex;flex-direction:column;height:100%;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:13px clamp(16px,3vw,30px);border-bottom:1px solid rgba(157,161,166,0.14);background:rgba(22,27,38,0.6);flex:none;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;color:#E6E8EC;">Consola de consultas</div>
+        <span style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:#9DA1A6;background:rgba(157,161,166,0.1);border:1px solid rgba(255,255,255,0.06);border-radius:999px;padding:4px 11px;">Motor: <strong style="color:#C9D1D9;font-weight:600;">${engineLabel}</strong></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:14px;background:#161B26;border:1px solid rgba(255,255,255,0.06);border-radius:999px;padding:7px 15px;">
+          <span style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:#C9D1D9;font-weight:500;"><span style="width:9px;height:9px;border-radius:3px;background:#15479B;"></span>Hive</span>
+          <span style="width:1px;height:13px;background:rgba(255,255,255,0.1);"></span>
+          <span style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:#C9D1D9;font-weight:500;"><span style="width:9px;height:9px;border-radius:3px;background:#8CC63F;"></span>Spark</span>
+        </div>
+        <span style="display:flex;align-items:center;gap:7px;font-size:12px;color:#9DA1A6;"><span style="width:8px;height:8px;border-radius:999px;background:#8CC63F;animation:scpulse 2s infinite;"></span>en línea</span>
+      </div>
+    </div>
+
+    <div data-chat id="chat" style="flex:1;min-height:0;overflow-y:auto;padding:clamp(16px,2.5vw,28px) clamp(16px,3vw,30px);">
+      <div style="max-width:940px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:18px;">
+        ${welcomeHtml}
+        ${messagesHtml}
+        ${thinkingHtml}
+      </div>
+    </div>
+
+    <div style="padding:clamp(12px,1.8vw,18px) clamp(16px,3vw,30px) clamp(16px,2.5vw,20px);border-top:1px solid rgba(157,161,166,0.14);background:#0E1320;flex:none;">
+      <div style="display:flex;gap:10px;align-items:stretch;max-width:940px;margin:0 auto;">
+        <input id="q" class="q" placeholder="Pregunta lo que quieras ..." value="${esc(state.input)}" style="flex:1;min-width:0;background:#161B26;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:13px 16px;color:#E6E8EC;font-size:15px;font-family:'Inter',sans-serif;outline:none;transition:border-color .2s;" />
+        <button type="button" class="ask" data-act="ask" style="display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#15479B,#8CC63F);color:#fff;border:none;border-radius:12px;padding:0 22px;font-size:14.5px;font-weight:600;font-family:'Space Grotesk',sans-serif;cursor:pointer;transition:filter .2s, transform .1s;white-space:nowrap;">Preguntar <span style="font-size:16px;">→</span></button>
+      </div>
+    </div>
+
+  </main>`;
+
+  document.getElementById('app').innerHTML =
+    `<div data-app style="height:100vh;overflow:hidden;display:flex;background-color:#0E1320;background-image:radial-gradient(rgba(141,198,63,0.05) 1px, transparent 1px), radial-gradient(rgba(21,71,155,0.07) 1px, transparent 1px);background-size:30px 30px;background-position:0 0, 15px 15px;color:#E6E8EC;">${sidebar}${main}</div>`;
+
+  // scroll abajo + foco
+  const chat=document.getElementById('chat');
+  if(chat) chat.scrollTop=chat.scrollHeight;
+  const q=document.getElementById('q');
+  if(q && !('ontouchstart' in window)) q.focus();
+}
+
+/* — Render de un mensaje del agente — */
+function renderAgent(msg, i){
+  const r=msg.resp;
+  const sh=state.show;
+  const defs=tabDefs();
+  const avail=defs.map(t=>t.key);
+  const activeTab=(msg.tab && avail.includes(msg.tab)) ? msg.tab : (avail[0]||null);
+  const bothEngines=state.engine==='ambos';
+  const speedup=(r.hive!=null && r.spark!=null) ? (r.hive/r.spark).toFixed(1).replace('.',',') : '—';
+
+  const avatar=`<div style="flex:none;width:36px;height:36px;border-radius:10px;background:linear-gradient(160deg,#1E2533,#161B26);border:1px solid rgba(141,198,63,0.3);display:flex;align-items:flex-end;justify-content:center;gap:3px;padding:8px;">
+    <div style="width:4px;height:8px;border-radius:2px;background:#15479B;"></div>
+    <div style="width:4px;height:14px;border-radius:2px;background:#4E7E6E;"></div>
+    <div style="width:4px;height:11px;border-radius:2px;background:#8CC63F;"></div>
+  </div>`;
+
+  if(avail.length===0){
+    return `<div style="display:flex;gap:12px;align-self:flex-start;max-width:96%;width:100%;">${avatar}
+      <div style="flex:1;min-width:0;background:#161B26;border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:6px 18px 18px;box-shadow:0 8px 30px rgba(0,0,0,0.25);">
+        <div style="padding:18px 0 6px;font-size:13px;color:#9DA1A6;">Activa al menos una salida en <strong style="color:#C9D1D9;">Salida del agente</strong> (panel izquierdo).</div>
+      </div></div>`;
+  }
+
+  const tabsBar=`<div style="display:flex;gap:20px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:16px;overflow-x:auto;">
+    ${defs.map(t=>{
+      const on=t.key===activeTab;
+      const st=`background:transparent;border:none;cursor:pointer;padding:10px 2px;font-size:13px;font-family:'Inter',sans-serif;white-space:nowrap;transition:color .2s;`+(on?'color:#fff;font-weight:600;border-bottom:2px solid #8CC63F;':'color:#9DA1A6;font-weight:500;border-bottom:2px solid transparent;');
+      return `<button type="button" data-act="tab" data-msg="${i}" data-arg="${t.key}" style="${st}">${t.label}</button>`;
+    }).join('')}
+  </div>`;
+
+  let body='';
+
+  if(activeTab==='resumen'){
+    body=`<div style="display:flex;flex-direction:column;gap:15px;padding-top:2px;">
+      <div>
+        <div style="font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8CC63F;font-weight:600;margin-bottom:8px;">Insight</div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:clamp(30px,5vw,40px);font-weight:700;color:#fff;line-height:1;letter-spacing:-0.02em;">${esc(r.heroValue)} <span style="font-size:0.42em;color:#8CC63F;font-weight:600;">${esc(r.heroUnit)}</span></div>
+        <div style="font-size:12.5px;color:#9DA1A6;margin-top:8px;">${esc(r.heroLabel)}</div>
+      </div>
+      <div style="font-size:14.5px;line-height:1.6;color:#E6E8EC;">${esc(r.summary)}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#8CC63F;background:rgba(141,198,63,0.1);border:1px solid rgba(141,198,63,0.28);border-radius:999px;padding:5px 11px;font-weight:600;"><span style="width:6px;height:6px;border-radius:999px;background:#8CC63F;"></span>Spark ${speedup}× más rápido</span>
+        <span style="font-size:11.5px;color:#9DA1A6;background:rgba(157,161,166,0.1);border:1px solid rgba(157,161,166,0.2);border-radius:999px;padding:5px 11px;">${fmtNum(r.matched)} coincidencias</span>
+        <span style="font-size:11.5px;color:#9DA1A6;background:rgba(157,161,166,0.1);border:1px solid rgba(157,161,166,0.2);border-radius:999px;padding:5px 11px;">${r.rows.length} filas recuperadas</span>
+      </div>
+    </div>`;
+  }
+  else if(activeTab==='ejecucion'){
+    const both = bothEngines ? `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#0E1320;border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:13px 15px;">
+        <span style="display:inline-flex;align-items:center;gap:7px;font-family:'JetBrains Mono',monospace;font-size:13px;color:#C9D1D9;"><span style="width:9px;height:9px;border-radius:3px;background:#15479B;"></span>Hive ${fmtTime(r.hive)}</span>
+        <span style="display:inline-flex;align-items:center;gap:7px;font-family:'JetBrains Mono',monospace;font-size:13px;color:#C9D1D9;"><span style="width:9px;height:9px;border-radius:3px;background:#8CC63F;"></span>Spark ${fmtTime(r.spark)}</span>
+        <span style="font-size:13px;color:#8CC63F;font-weight:600;margin-left:auto;">→ Spark ${speedup}× más rápido</span>
+      </div>` : '';
+    const sqlBlock = sh.sql ? `<div>
+        <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#9DA1A6;font-weight:600;">SQL generado</div>
+        <pre style="margin:7px 0 0;background:#0E1320;border:1px solid rgba(255,255,255,0.05);border-left:3px solid #8CC63F;border-radius:10px;padding:13px 15px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.65;color:#C9D1D9;overflow-x:auto;white-space:pre;">${esc(r.sql)}</pre>
+      </div>` : '';
+    const timeBlock = sh.tiempos ? `<div>
+        <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#9DA1A6;font-weight:600;">Tiempo de ejecución</div>
+        ${timeBarsFor(r).map(tb=>`<div style="display:flex;align-items:center;gap:10px;margin-top:9px;">
+          <span style="display:flex;align-items:center;gap:6px;width:62px;font-size:12px;color:#C9D1D9;"><span style="width:8px;height:8px;border-radius:2px;background:${tb.color};"></span>${tb.label}</span>
+          <div style="flex:1;height:9px;border-radius:999px;background:rgba(157,161,166,0.1);overflow:hidden;">
+            <div style="height:100%;border-radius:999px;transition:width .6s cubic-bezier(.2,.8,.2,1);width:${tb.pct}%;background:${tb.color};"></div>
+          </div>
+          <span style="width:56px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:#E6E8EC;">${tb.value}</span>
+        </div>`).join('')}
+      </div>` : '';
+    body=`<div style="display:flex;flex-direction:column;gap:16px;padding-top:2px;">${both}${sqlBlock}${timeBlock}</div>`;
+  }
+  else if(activeTab==='resultados'){
+    const visN=state.rowsVisible>=9999 ? r.rows.length : state.rowsVisible;
+    const visRows=r.rows.slice(0,visN);
+    const rowsOpts=ROWS_OPTS.map(o=>{
+      const on=state.rowsVisible===o.val;
+      const st=`padding:5px 10px;font-size:11.5px;font-weight:600;border:none;cursor:pointer;border-radius:6px;transition:all .2s;font-family:'Inter',sans-serif;`+(on?'background:rgba(141,198,63,0.18);color:#8CC63F;':'background:transparent;color:#9DA1A6;');
+      return `<button type="button" data-act="rows" data-arg="${o.val}" style="${st}">${o.label}</button>`;
+    }).join('');
+    const rowsCells=visRows.map(row=>`
+      <div style="padding:9px 14px;font-size:13px;color:#E6E8EC;border-bottom:1px solid rgba(255,255,255,0.04);">${esc(row[0])}</div>
+      <div style="padding:9px 14px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:#8CC63F;border-bottom:1px solid rgba(255,255,255,0.04);">${esc(row[1])}</div>`).join('');
+    body=`<div style="display:flex;flex-direction:column;gap:12px;padding-top:2px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <div style="font-size:12.5px;color:#C9D1D9;">Mostrando <strong style="color:#fff;">${visRows.length}</strong> de ${r.rows.length} filas <span style="color:#6B7280;">· ${fmtNum(r.matched)} coincidencias</span></div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:11px;color:#6B7280;">Ver</span>
+          <div style="display:flex;gap:3px;background:#0E1320;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:3px;">${rowsOpts}</div>
+        </div>
+      </div>
+      <div style="border:1px solid rgba(255,255,255,0.06);border-radius:10px;overflow:hidden;">
+        <div style="display:grid;grid-template-columns:1fr auto;">
+          <div style="padding:9px 14px;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#9DA1A6;background:rgba(157,161,166,0.06);font-weight:600;border-bottom:1px solid rgba(255,255,255,0.07);">${esc(r.cols[0])}</div>
+          <div style="padding:9px 14px;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#9DA1A6;background:rgba(157,161,166,0.06);font-weight:600;text-align:right;border-bottom:1px solid rgba(255,255,255,0.07);">${esc(r.cols[1])}</div>
+          ${rowsCells}
+        </div>
+      </div>
+    </div>`;
+  }
+  else if(activeTab==='grafica'){
+    const n=r.chart.length;
+    const rmax=Math.max(...r.chart.map(c=>c.value));
+    const bars=r.chart.map((c,ci)=>{
+      const color=mix(n>1?ci/(n-1):0);
+      return `<div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:110px;flex:none;font-size:12px;color:#C9D1D9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(c.label)}</div>
+        <div style="flex:1;height:16px;border-radius:6px;background:rgba(157,161,166,0.1);overflow:hidden;">
+          <div style="height:100%;border-radius:6px;transition:width .7s cubic-bezier(.2,.8,.2,1);width:${c.value/rmax*100}%;background:${color};"></div>
+        </div>
+        <div style="width:74px;flex:none;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:#E6E8EC;">${esc(c.valueFmt)}</div>
+      </div>`;
+    }).join('');
+    body=`<div style="display:flex;flex-direction:column;gap:13px;padding-top:2px;">
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;color:#E6E8EC;">${esc(r.chartTitle)}</div>
+      ${bars}
+    </div>`;
+  }
+
+  return `<div style="display:flex;gap:12px;align-self:flex-start;max-width:96%;width:100%;">${avatar}
+    <div style="flex:1;min-width:0;background:#161B26;border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:6px 18px 18px;box-shadow:0 8px 30px rgba(0,0,0,0.25);">
+      ${tabsBar}${body}
+    </div>
+  </div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   EVENTOS (delegación)
+   ══════════════════════════════════════════════════════════════════════════════ */
+document.addEventListener('click', (e)=>{
+  const btn=e.target.closest('[data-act]');
+  if(!btn) return;
+  const act=btn.dataset.act, arg=btn.dataset.arg;
+  switch(act){
+    case 'sec':    state.sections[arg]=!state.sections[arg]; render(); break;
+    case 'engine': state.engine=arg; render(); break;
+    case 'out':    state.show[arg]=!state.show[arg]; render(); break;
+    case 'rows':   state.rowsVisible=Number(arg); render(); break;
+    case 'tab':    state.messages[Number(btn.dataset.msg)].tab=arg; render(); break;
+    case 'ex':     send(EXAMPLES[Number(arg)]); break;
+    case 'ask':    send(document.getElementById('q').value); break;
+  }
+});
+
+document.addEventListener('keydown', (e)=>{
+  if(e.target && e.target.id==='q' && e.key==='Enter' && !e.shiftKey){
+    e.preventDefault();
+    send(e.target.value);
+  }
+});
+
+document.addEventListener('input', (e)=>{
+  if(e.target && e.target.id==='q') state.input=e.target.value;  // sin re-render para no perder el cursor
+});
+
+/* — Arranque — */
+render();
+</script>
+</body>
+</html>
