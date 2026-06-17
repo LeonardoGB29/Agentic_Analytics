@@ -1,54 +1,74 @@
-# Agente Analítico — Retail TPC-DS
+# Agente Analitico Retail TPC-DS
 
-Agente que traduce preguntas en lenguaje natural a SQL y las ejecuta en
-**Apache Hive** / **Apache Spark** sobre datos TPC-DS, con apoyo de un LLM
-(Gemini). Interfaz web + API en Python.
+Este modulo implementa las Skills 1, 2 y 3 para un proyecto de Big Data Retail
+con TPC-DS sobre Hive y Spark.
 
-## Estructura
+## Que hace
 
+`backend/skills_1_2_3.py` recibe una pregunta en lenguaje natural, identifica la
+intencion analitica, genera una consulta SQL compatible con Hive/Spark SQL y
+selecciona el motor de ejecucion.
+
+El modulo no ejecuta consultas, no se conecta a Hive, no se conecta a Spark y no
+solo devuelve:
+
+```python
+sql: str
+motor: str
 ```
-trabajo_parcial_2/
-├── frontend/
-│   └── index.html          # interfaz completa (HTML + CSS + JS, sin frameworks)
-├── backend/
-│   ├── server.py           # API Flask: sirve el frontend y /api/query
-│   ├── skill4.py           # ejecución de consultas en Hive y Spark
-│   ├── skill5.py           # presentación de resultados (skill_5_to_json)
-│   └── requirements.txt    # dependencias de Python
-└── README.md
-```
 
-## 1. Solo frontend (rápido, sin instalar nada)
+## Configuracion de Gemini
 
-`frontend/index.html` es autónomo: no necesita servidor, dependencias ni
-internet. Usa datos de ejemplo (mock).
+Las Skills 1, 2 y 3 usan Gemini mediante `google-generativeai`.
 
-> **Doble clic en `frontend/index.html`** y se abre en el navegador.
-
-O desde la terminal:
+Instala dependencias:
 
 ```bash
-open frontend/index.html          # macOS
+pip install -r backend/requirements.txt
 ```
 
-## 2. Frontend + backend (sistema completo)
+Configura tu API key de Google AI Studio:
 
 ```bash
-python3 -m venv venv
-venv/bin/pip install -r backend/requirements.txt
-venv/bin/python backend/server.py
+set GEMINI_API_KEY=tu_api_key
 ```
 
-Luego abre **http://localhost:5000**.
+Opcionalmente puedes elegir el modelo:
 
-El frontend detecta solo si está servido por HTTP: en ese caso llama al API real
-(`/api/query`) en vez de usar los datos mock. Si el backend falla, vuelve
-automáticamente a los datos mock.
+```bash
+set GEMINI_MODEL=gemini-1.5-flash
+```
 
-## Flujo del agente
+Si no hay API key o Gemini devuelve una respuesta invalida, el modulo usa el
+catalogo local como respaldo para no enviar SQL roto a la Skill 4.
 
-`pregunta → skill1 (intención) → skill2 (SQL) → skill3 (motor) → skill4 (Hive/Spark) → skill5 (presentación) → UI`
+## Archivos
 
-Hoy `skill1`, `skill2` y `skill3` están como *stub* en `server.py`; reemplaza
-cada bloque marcado con la llamada real (Gemini / selección de motor) cuando esté
-disponible. `skill4` y `skill5` ya son el código real.
+```text
+backend/gemini_utils.py  # configuracion comun de Gemini
+backend/skill1.py        # Skill 1: interpretacion de intencion con Gemini
+backend/skill2.py        # Skill 2: generacion de SQL con Gemini
+backend/skill3.py        # Skill 3: seleccion de motor con Gemini
+backend/skills_1_2_3.py  # orquestador que devuelve (sql, motor)
+backend/test_skills.py   # pruebas simples con assert
+```
+
+## Ejemplo de uso
+
+```python
+from backend.skills_1_2_3 import skill_1_2_3
+
+pregunta = "Que tienda tuvo mayores ventas?"
+sql, motor = skill_1_2_3(pregunta, modo="both")
+
+resultado = skill_4_ejecutar(sql, motor, spark)
+```
+
+`modo` puede ser `"auto"`, `"hive"`, `"spark"` o `"both"`. En modo automatico,
+la Skill 3 envia consultas pesadas a Spark y consultas simples a Hive.
+
+## Pruebas
+
+```bash
+python backend/test_skills.py
+```
