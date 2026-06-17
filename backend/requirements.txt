@@ -2,4 +2,4 @@ flask
 flask-cors
 pandas
 matplotlib
-google-generativeai
+google-genai

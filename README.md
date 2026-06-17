@@ -19,7 +19,7 @@ motor: str
 
 ## Configuracion de Gemini
 
-Las Skills 1, 2 y 3 usan Gemini mediante `google-generativeai`.
+Las Skills 1, 2 y 3 usan Gemini mediante el SDK actual `google-genai`.
 
 Instala dependencias:
 
@@ -36,7 +36,7 @@ set GEMINI_API_KEY=tu_api_key
 Opcionalmente puedes elegir el modelo:
 
 ```bash
-set GEMINI_MODEL=gemini-1.5-flash
+set GEMINI_MODEL=gemini-3.5-flash
 ```
 
 Si no hay API key o Gemini devuelve una respuesta invalida, el modulo usa el

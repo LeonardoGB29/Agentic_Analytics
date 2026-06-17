@@ -194,6 +194,7 @@ if __name__ == "__main__":
         "Necesito comparar las ventas totales entre tiendas",
         "Dame el ranking mensual de tiendas segun ventas",
         "Cuanto gasta en promedio cada cliente por compra?",
+        "Estoy revisando el comportamiento general del negocio y quiero identificar, sin enfocarme todavía en clientes ni en tiendas específicas, cuáles son los artículos que realmente aportaron más dinero a la empresa; es decir, no me interesa solo saber qué productos se vendieron más veces, sino cuáles generaron el mayor ingreso total considerando todas las ventas registradas.",
     ]
 
     for pregunta in preguntas:
