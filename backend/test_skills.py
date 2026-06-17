@@ -1,3 +1,7 @@
+import os
+
+os.environ["GEMINI_DESACTIVADO"] = "1"
+
 from skills_1_2_3 import (
     listar_intenciones_disponibles,
     normalizar_texto,

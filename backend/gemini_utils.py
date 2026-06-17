@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from functools import lru_cache
 
 
 DEFAULT_GEMINI_MODEL = "gemini-3.5-flash"
@@ -18,6 +19,7 @@ def obtener_api_key_gemini() -> str | None:
     return os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 
 
+@lru_cache(maxsize=128)
 def generar_texto_gemini(prompt: str) -> str:
     """
     Ejecuta un prompt contra Gemini y devuelve texto plano.

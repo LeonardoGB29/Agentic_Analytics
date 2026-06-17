@@ -42,6 +42,42 @@ set GEMINI_MODEL=gemini-3.5-flash
 Si no hay API key o Gemini devuelve una respuesta invalida, el modulo usa el
 catalogo local como respaldo para no enviar SQL roto a la Skill 4.
 
+## Optimizacion de cuota
+
+La funcion principal `skill_1_2_3()` esta optimizada para no hacer tres llamadas
+a Gemini por pregunta. En el flujo normal hace como maximo una llamada a Gemini
+para resolver:
+
+```text
+pregunta -> intencion + motor
+```
+
+Luego genera el SQL desde el catalogo local validado. Esto ahorra cuota y evita
+que un SQL mal formado del LLM llegue a Hive o Spark.
+
+Las funciones individuales `skill_1_identificar_intencion`,
+`skill_2_generar_sql` y `skill_3_seleccionar_motor` siguen existiendo para
+probar cada skill por separado, pero para el pipeline real se debe usar:
+
+```python
+from backend.skills_1_2_3 import skill_1_2_3
+
+sql, motor = skill_1_2_3("Que productos generaron mas dinero?")
+```
+
+Para correr pruebas sin gastar cuota de Gemini:
+
+```bash
+set GEMINI_DESACTIVADO=1
+python backend/test_skills.py
+```
+
+Para volver a usar Gemini, elimina esa variable en la terminal actual:
+
+```bash
+set GEMINI_DESACTIVADO=
+```
+
 ## Archivos
 
 ```text

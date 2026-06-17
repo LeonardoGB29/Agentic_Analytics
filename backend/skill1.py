@@ -138,6 +138,9 @@ def _identificar_intencion_por_reglas(texto: str) -> str | None:
     if _tiene(texto, "10", "diez", "top 10") and _tiene(texto, "cliente", "clientes") and _tiene(texto, "mejor", "mejores", "valioso", "valiosos", "gasto", "gastaron", "dinero"):
         return "diez_mejores_clientes"
 
+    if _tiene(texto, "producto", "productos", "articulo", "articulos") and _tiene(texto, "ingreso", "ingresos", "dinero", "plata", "facturacion", "monto", "generaron", "aportaron"):
+        return "productos_mayor_ingreso"
+
     if _tiene(texto, "20", "veinte", "primeros 20") and _tiene(texto, "cliente", "clientes") and _tiene(texto, "compra", "compras", "compraron", "hicieron"):
         return "top_20_clientes_compras"
 
@@ -149,9 +152,6 @@ def _identificar_intencion_por_reglas(texto: str) -> str | None:
 
     if _tiene(texto, "por tienda", "por cada tienda", "cada tienda", "en cada tienda", "por local", "cada local") and _tiene(texto, "producto", "productos", "articulo", "articulos", "lideres"):
         return "top_productos_por_tienda"
-
-    if _tiene(texto, "producto", "productos", "articulo", "articulos") and _tiene(texto, "ingreso", "ingresos", "dinero", "plata", "facturacion", "monto", "generaron") and not _tiene(texto, "cliente", "clientes"):
-        return "productos_mayor_ingreso"
 
     if _tiene(texto, "cliente", "clientes") and _tiene(texto, "gasto", "gastaron", "dinero", "monto total", "comprado", "ingresos", "valiosos"):
         return "top_clientes_gasto_total"
