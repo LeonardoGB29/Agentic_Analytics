@@ -1,5 +1,6 @@
-import pandas as pd
-import matplotlib.pyplot as plt
+# pandas y matplotlib se importan de forma perezosa dentro de skill_5_presentar:
+# skill_5_to_json (lo que usa el servidor) no los necesita, y asi evitamos
+# requerirlos en el driver del cluster.
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -40,7 +41,11 @@ def skill_5_to_json(resultado, sql: str, engine: str, meta: dict) -> dict:
         for item in chart_raw
     ]
 
-    hero_raw = rows[0][1] if rows else '—'
+    # heroValue lo decide el meta (la columna relevante varia por consulta);
+    # si no viene, caemos al segundo campo de la primera fila.
+    hero_raw = meta.get('heroValue')
+    if hero_raw is None:
+        hero_raw = rows[0][1] if rows else '—'
 
     return {
         'heroValue':  hero_raw,
@@ -51,7 +56,7 @@ def skill_5_to_json(resultado, sql: str, engine: str, meta: dict) -> dict:
         'hive':       hive_time,
         'spark':      spark_time,
         'matched':    meta.get('matched', len(list(rows))),
-        'cols':       list(cols),
+        'cols':       [str(c).split('.')[-1] for c in cols],
         'rows':       [list(r) for r in rows],
         'chartTitle': meta.get('chartTitle', ''),
         'chart':      chart,
@@ -61,6 +66,11 @@ def skill_5_to_json(resultado, sql: str, engine: str, meta: dict) -> dict:
 # ── original skill (unchanged) ────────────────────────────────────────────────
 
 def skill_5_presentar(resultado):
+    import pandas as pd
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
     # Caso comparación (both): graficar métricas Hive vs Spark
     if isinstance(resultado, dict) and "hive" in resultado:
         met_h = resultado["hive"]["metricas"]
