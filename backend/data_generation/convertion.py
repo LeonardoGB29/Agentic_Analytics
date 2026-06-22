@@ -75,17 +75,23 @@ print(f">> Se cargaron {len(table_schemas)} esquemas de tablas.")
 for t, schema in table_schemas.items():
     print(f"Procesando tabla: {t}")
 
-    # Leemos especificando el esquema correcto.
-    # Al definir el esquema de N columnas, Spark descarta la columna vacía extra al final del archivo .dat (N+1).
-    df = spark.read \
-        .option("sep", "|") \
-        .option("header", "false") \
-        .option("dateFormat", "yyyy-MM-dd") \
-        .schema(schema) \
-        .csv(f"{BASE_INPUT}/{t}")
+    try:
+        # Leemos especificando el esquema correcto.
+        # Al definir el esquema de N columnas, Spark descarta la columna vacía extra al final del archivo .dat (N+1).
+        df = spark.read \
+            .option("sep", "|") \
+            .option("header", "false") \
+            .option("dateFormat", "yyyy-MM-dd") \
+            .schema(schema) \
+            .csv(f"{BASE_INPUT}/{t}")
 
-    df.write \
-        .mode("overwrite") \
-        .parquet(f"{BASE_OUTPUT}/{t}")
+        df.write \
+            .mode("overwrite") \
+            .parquet(f"{BASE_OUTPUT}/{t}")
 
-    print(f"OK -> {t} convertido a Parquet con esquema correcto.")
+        print(f"OK -> {t} convertido a Parquet con esquema correcto.")
+    except Exception as e:
+        if "PATH_NOT_FOUND" in str(e) or "does not exist" in str(e):
+            print(f"ADVERTENCIA -> La ruta para la tabla '{t}' no existe en S3. Se omite.")
+        else:
+            print(f"ERROR -> Error al procesar la tabla '{t}': {e}")
