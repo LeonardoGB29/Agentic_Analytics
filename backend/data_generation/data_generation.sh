@@ -2,14 +2,12 @@
 set -euo pipefail
 
 SCALE=10
-PARALLELISM=2
 LOCAL_DIR="$HOME/tpcds_data"
 S3_BUCKET="s3://tpcds-bigdata-unsa-2026/data"
 
 echo "=========================================="
-echo " TPC-DS paralelo en un solo nodo"
+echo " Generación de datos TPC-DS secuencial"
 echo " Scale: $SCALE"
-echo " Paralelismo: $PARALLELISM"
 echo "=========================================="
 
 sudo dnf install -y gcc make flex bison byacc git
@@ -36,47 +34,27 @@ TABLES=(
     web_sales web_site catalog_returns
 )
 
-generate_table_parallel() {
-    local table=$1
-
-    echo ">> Generando tabla: $table en paralelo ($PARALLELISM procesos)"
-
-    for i in $(seq 1 $PARALLELISM); do
-        (
-            ./dsdgen \
-                -SCALE "$SCALE" \
-                -TABLE "$table" \
-                -DIR "$LOCAL_DIR" \
-                -PARALLEL "$PARALLELISM" \
-                -CHILD "$i" \
-                -TERMINATE N \
-                -FORCE
-        ) &
-    done
-
-    wait
-}
-
 for tabla in "${TABLES[@]}"; do
     echo "========================================"
     echo " Procesando $tabla"
     echo "========================================"
 
-    generate_table_parallel "$tabla"
+    # Generar tabla secuencialmente
+    ./dsdgen \
+        -SCALE "$SCALE" \
+        -TABLE "$tabla" \
+        -DIR "$LOCAL_DIR" \
+        -TERMINATE N \
+        -FORCE
 
-    file_pattern="$LOCAL_DIR/${tabla}*.dat"
+    file_path="$LOCAL_DIR/${tabla}.dat"
 
-    shopt -s nullglob
-    files=($file_pattern)
-
-    if [ ${#files[@]} -gt 0 ]; then
-        for f in "${files[@]}"; do
-            echo ">> Subiendo $f a S3..."
-            aws s3 cp "$f" "${S3_BUCKET}/${tabla}/"
-            rm -f "$f"
-        done
+    if [ -f "$file_path" ]; then
+        echo ">> Subiendo $file_path a S3..."
+        aws s3 cp "$file_path" "${S3_BUCKET}/${tabla}/"
+        rm -f "$file_path"
     else
-        echo "No se generaron archivos para $tabla"
+        echo "No se generó el archivo para $tabla"
     fi
 done
 
