@@ -7,8 +7,8 @@ spark = SparkSession.builder \
     .appName("TPCDS DAT to Parquet") \
     .getOrCreate()
 
-BASE_INPUT = "s3://tpcds-bigdata-unsa-2026/data"
-BASE_OUTPUT = "s3://tpcds-bigdata-unsa-2026/data_parquet"
+BASE_INPUT = "s3://tpcds-bigdata-kevin-2026/data"
+BASE_OUTPUT = "s3://tpcds-bigdata-kevin-2026/data_parquet"
 SQL_FILE_PATH = "tablas.sql"
 
 def parse_schemas_from_sql(sql_file_path):

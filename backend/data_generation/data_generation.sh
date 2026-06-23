@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCALE=10
 LOCAL_DIR="$HOME/tpcds_data"
-S3_BUCKET="s3://tpcds-bigdata-unsa-2026/data"
+S3_BUCKET="s3://tpcds-bigdata-kevin-2026/data"
 
 echo "=========================================="
 echo " Generación de datos TPC-DS secuencial"

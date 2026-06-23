@@ -10,7 +10,7 @@ spark = SparkSession.builder \
 spark.sql("CREATE DATABASE IF NOT EXISTS tpcds_parquet")
 spark.sql("USE tpcds_parquet")
 
-BASE_OUTPUT = "s3://tpcds-bigdata-unsa-2026/data_parquet"
+BASE_OUTPUT = "s3://tpcds-bigdata-kevin-2026/data_parquet"
 
 # Lista de todas las tablas que convertiste
 TABLES = [
