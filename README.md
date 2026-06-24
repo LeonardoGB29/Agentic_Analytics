@@ -82,6 +82,21 @@ Para volver a usar Gemini, elimina esa variable en la terminal actual:
 unset GEMINI_DESACTIVADO
 ```
 
+## Consultas fuera del catalogo
+
+El agente usa un flujo hibrido en una sola llamada a Gemini:
+
+1. Si la pregunta coincide con una intencion conocida, Gemini devuelve
+   `tipo="catalogo"` y se usa el SQL aprobado en `skill2.py`.
+2. Si es una pregunta analitica nueva que puede resolverse con las cinco tablas,
+   Gemini devuelve `tipo="dinamica"`, genera el SQL y selecciona Hive o Spark.
+3. Si la pregunta no es analitica o requiere columnas que no existen, devuelve
+   `tipo="no_analitica"` y el sistema la rechaza.
+
+El SQL dinamico se valida antes de llegar a Skill 4. Solo se permiten consultas
+`SELECT`/`WITH`, las tablas de `tpcds_parquet` y una unica sentencia. Se
+rechazan DDL, DML, comentarios, tablas inventadas y operaciones destructivas.
+
 ## Archivos
 
 ```text

@@ -195,6 +195,28 @@ function chartStats(r){
   const max=Math.max(0.001,...rows.map(c=>Math.abs(c.value)));
   return {rows,total,max};
 }
+function errorResponse(message){
+  const clean = message || 'No se pudo procesar la pregunta.';
+  return {
+    error:true,
+    heroValue:'Sin resultado',
+    heroUnit:'',
+    heroLabel:'Pregunta no procesada',
+    summary:clean,
+    sql:'',
+    hive:null,
+    spark:null,
+    hive_cpu:null,
+    spark_cpu:null,
+    hive_mem:null,
+    spark_mem:null,
+    matched:0,
+    cols:['mensaje','detalle'],
+    rows:[['Error', clean]],
+    chartTitle:'Sin grafica',
+    chart:[],
+  };
+}
 
 /* ── SKILL 1 (local) — intención. Al conectar Gemini, lo resuelve el servidor. ── */
 function infer(text){
@@ -233,15 +255,28 @@ function sendBackend(text){
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({question:text, engine:state.engine}),
   })
-  .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+  .then(async r=>{
+    const data = await r.json().catch(()=>null);
+    if(!r.ok){
+      const detail = data && (data.error || data.message || data.detail);
+      throw new Error(detail || 'HTTP '+r.status);
+    }
+    return data;
+  })
   .then(resp=>{
     state.messages.push({role:'agent', resp, tab:'resumen'});  // resp = salida de skill_5_to_json
     state.thinking=false;
     render();
   })
   .catch(err=>{
-    console.error('[Agente] backend falló, usando mock:', err);
-    sendMock(text);  // si el backend no responde, cae a datos locales
+    console.error('[Agente] backend falló:', err);
+    state.messages.push({
+      role:'agent',
+      resp:errorResponse(`${err.message || err}. Prueba una consulta del catalogo, por ejemplo: productos mas vendidos, ventas por tienda, ventas por mes o mejores clientes.`),
+      tab:'resumen',
+    });
+    state.thinking=false;
+    render();
   });
 }
 
@@ -442,6 +477,8 @@ function renderAgent(msg, i){
   const activeTab=(msg.tab && avail.includes(msg.tab)) ? msg.tab : (avail[0]||null);
   const bothEngines=state.engine==='ambos';
   const speedup=(r.hive!=null && r.spark!=null) ? (r.hive/r.spark).toFixed(1).replace('.',',') : '—';
+  const hasComparison = r.hive!=null && r.spark!=null;
+  const rowCount = Array.isArray(r.rows) ? r.rows.length : 0;
 
   const avatar=`<div style="flex:none;width:36px;height:36px;border-radius:10px;background:linear-gradient(160deg,#1E2533,#161B26);border:1px solid rgba(141,198,63,0.3);display:flex;align-items:flex-end;justify-content:center;gap:3px;padding:8px;">
     <div style="width:4px;height:8px;border-radius:2px;background:#15479B;"></div>
@@ -475,9 +512,9 @@ function renderAgent(msg, i){
       </div>
       <div style="font-size:14.5px;line-height:1.6;color:#E6E8EC;">${esc(r.summary)}</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;">
-        <span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#8CC63F;background:rgba(141,198,63,0.1);border:1px solid rgba(141,198,63,0.28);border-radius:999px;padding:5px 11px;font-weight:600;"><span style="width:6px;height:6px;border-radius:999px;background:#8CC63F;"></span>Spark ${speedup}× más rápido</span>
+        ${hasComparison ? `<span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#8CC63F;background:rgba(141,198,63,0.1);border:1px solid rgba(141,198,63,0.28);border-radius:999px;padding:5px 11px;font-weight:600;"><span style="width:6px;height:6px;border-radius:999px;background:#8CC63F;"></span>Spark ${speedup}× más rápido</span>` : ''}
         <span style="font-size:11.5px;color:#9DA1A6;background:rgba(157,161,166,0.1);border:1px solid rgba(157,161,166,0.2);border-radius:999px;padding:5px 11px;">${fmtNum(r.matched)} coincidencias</span>
-        <span style="font-size:11.5px;color:#9DA1A6;background:rgba(157,161,166,0.1);border:1px solid rgba(157,161,166,0.2);border-radius:999px;padding:5px 11px;">${r.rows.length} filas recuperadas</span>
+        <span style="font-size:11.5px;color:#9DA1A6;background:rgba(157,161,166,0.1);border:1px solid rgba(157,161,166,0.2);border-radius:999px;padding:5px 11px;">${rowCount} filas recuperadas</span>
       </div>
     </div>`;
   }
@@ -515,8 +552,9 @@ function renderAgent(msg, i){
     body=`<div style="display:flex;flex-direction:column;gap:16px;padding-top:2px;">${both}${sqlBlock}${timeBlock}${cpuBlock}${memBlock}</div>`;
   }
   else if(activeTab==='resultados'){
-    const visN=state.rowsVisible>=9999 ? r.rows.length : state.rowsVisible;
-    const visRows=r.rows.slice(0,visN);
+    const sourceRows=Array.isArray(r.rows) ? r.rows : [];
+    const visN=state.rowsVisible>=9999 ? sourceRows.length : state.rowsVisible;
+    const visRows=sourceRows.slice(0,visN);
     const cstats=chartStats(r);
     const chartByLabel=new Map(cstats.rows.map(c=>[String(c.label),c]));
     const rowsOpts=ROWS_OPTS.map(o=>{
@@ -542,7 +580,7 @@ function renderAgent(msg, i){
     }).join('');
     body=`<div style="display:flex;flex-direction:column;gap:12px;padding-top:2px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-        <div style="font-size:12.5px;color:#C9D1D9;">Mostrando <strong style="color:#fff;">${visRows.length}</strong> de ${r.rows.length} filas <span style="color:#6B7280;">· ${fmtNum(r.matched)} coincidencias</span></div>
+        <div style="font-size:12.5px;color:#C9D1D9;">Mostrando <strong style="color:#fff;">${visRows.length}</strong> de ${sourceRows.length} filas <span style="color:#6B7280;">· ${fmtNum(r.matched)} coincidencias</span></div>
         <div style="display:flex;align-items:center;gap:6px;">
           <span style="font-size:11px;color:#6B7280;">Ver</span>
           <div style="display:flex;gap:3px;background:#0E1320;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:3px;">${rowsOpts}</div>
