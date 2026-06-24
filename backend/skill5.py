@@ -16,22 +16,39 @@ def skill_5_to_json(resultado, sql: str, engine: str, meta: dict) -> dict:
     Converts the output of skill4 into the JSON contract expected by the frontend.
 
     resultado:
-        • dict {"hive": {"cols", "rows", "tiempo"}, "spark": {...}}  → ambos motores
-        • tuple (cols, rows, tiempo)                                  → motor único
+        • dict {"hive": {"cols", "rows", "tiempo", "cpu", "mem"},
+                "spark": {...}}                                     → ambos motores
+        • dict {"cols", "rows", "tiempo", "cpu", "mem"}              → motor único
 
     meta (provided by skill2/LLM or stub):
         heroUnit, heroLabel, summary, matched, chartTitle,
         chart: list of (label, numeric_value)
     """
-    if isinstance(resultado, dict) and 'hive' in resultado:
+    if isinstance(resultado, dict) and 'hive' in resultado and 'spark' in resultado:
         hive_time  = resultado['hive']['tiempo']
         spark_time = resultado['spark']['tiempo']
+        hive_cpu   = resultado['hive'].get('cpu')
+        hive_mem   = resultado['hive'].get('mem')
+        spark_cpu  = resultado['spark'].get('cpu')
+        spark_mem  = resultado['spark'].get('mem')
         cols = resultado['hive']['cols']
         rows = resultado['hive']['rows']
+    elif isinstance(resultado, dict) and 'cols' in resultado:
+        cols = resultado['cols']
+        rows = resultado['rows']
+        t = resultado['tiempo']
+        hive_time  = t if engine == 'hive'  else None
+        spark_time = t if engine == 'spark' else None
+        hive_cpu   = resultado.get('cpu') if engine == 'hive'  else None
+        hive_mem   = resultado.get('mem') if engine == 'hive'  else None
+        spark_cpu  = resultado.get('cpu') if engine == 'spark' else None
+        spark_mem  = resultado.get('mem') if engine == 'spark' else None
     else:
+        # Legacy tuple fallback (cols, rows, tiempo)
         cols, rows, t = resultado
         hive_time  = t if engine == 'hive'  else None
         spark_time = t if engine == 'spark' else None
+        hive_cpu = hive_mem = spark_cpu = spark_mem = None
 
     chart_raw = meta.get('chart', [])
     chart = [
@@ -51,6 +68,10 @@ def skill_5_to_json(resultado, sql: str, engine: str, meta: dict) -> dict:
         'sql':        sql,
         'hive':       hive_time,
         'spark':      spark_time,
+        'hive_cpu':   round(hive_cpu, 1) if hive_cpu is not None else None,
+        'hive_mem':   round(hive_mem, 1) if hive_mem is not None else None,
+        'spark_cpu':  round(spark_cpu, 1) if spark_cpu is not None else None,
+        'spark_mem':  round(spark_mem, 1) if spark_mem is not None else None,
         'matched':    meta.get('matched', len(list(rows))),
         'cols':       list(display_cols),
         'rows':       [list(r) for r in display_rows],
