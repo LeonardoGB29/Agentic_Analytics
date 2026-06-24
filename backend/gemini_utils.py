@@ -28,6 +28,9 @@ def generar_texto_gemini(prompt: str) -> str:
     """
     Ejecuta un prompt contra Gemini y devuelve texto plano.
     """
+    if os.getenv("GEMINI_DESACTIVADO", "").lower() in {"1", "true", "si"}:
+        raise RuntimeError("Gemini esta desactivado por GEMINI_DESACTIVADO.")
+
     api_key = obtener_api_key_gemini()
     if not api_key:
         raise RuntimeError(
@@ -67,6 +70,9 @@ def generar_texto_gemini_con_modelo_unico(prompt: str) -> str:
     Ejecuta Gemini usando solo GEMINI_MODEL o el modelo por defecto.
     Se conserva para depuracion manual.
     """
+    if os.getenv("GEMINI_DESACTIVADO", "").lower() in {"1", "true", "si"}:
+        raise RuntimeError("Gemini esta desactivado por GEMINI_DESACTIVADO.")
+
     api_key = obtener_api_key_gemini()
     if not api_key:
         raise RuntimeError(
