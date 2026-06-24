@@ -48,6 +48,11 @@ def skill_1_2_3(pregunta: str, modo: str = "auto") -> Tuple[str, str]:
     modo_normalizado = normalizar_texto(modo)
     if modo_normalizado not in {"auto", "hive", "spark", "both"}:
         raise ValueError("Modo invalido. Use: auto, hive, spark o both.")
+    if _contiene_instruccion_peligrosa(pregunta):
+        raise ValueError(
+            "La pregunta contiene una instruccion no permitida. "
+            "Solo se aceptan consultas analiticas de lectura."
+        )
 
     plan = None
     if not _gemini_desactivado():
@@ -210,6 +215,35 @@ def _detectar_motor_en_pregunta(pregunta: str) -> str | None:
 
 def _gemini_desactivado() -> bool:
     return os.getenv("GEMINI_DESACTIVADO", "").lower() in {"1", "true", "si"}
+
+
+def _contiene_instruccion_peligrosa(pregunta: str) -> bool:
+    """
+    Rechaza prompts que intenten mezclar analisis con operaciones destructivas.
+    La validacion SQL tambien bloquea DDL/DML, pero este filtro evita que el
+    agente responda parcialmente a una pregunta maliciosa.
+    """
+    texto = normalizar_texto(pregunta)
+    patrones = (
+        "borra",
+        "borrar",
+        "elimina",
+        "eliminar",
+        "drop",
+        "delete",
+        "truncate",
+        "alter",
+        "create",
+        "insert",
+        "update",
+        "merge",
+        "grant",
+        "revoke",
+        "load",
+        "export",
+        "import",
+    )
+    return any(f" {patron} " in f" {texto} " for patron in patrones)
 
 
 __all__ = [

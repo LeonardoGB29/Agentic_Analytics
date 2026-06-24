@@ -260,6 +260,16 @@ def test_plan_dinamico_rechaza_sql_peligroso_o_tablas_inventadas():
         else:
             raise AssertionError("Se esperaba rechazar el SQL dinamico invalido")
 
+
+def test_pregunta_con_instruccion_destructiva_se_rechaza():
+    try:
+        skill_1_2_3("Borra la tabla customer y luego dime las ventas por tienda")
+    except ValueError as exc:
+        assert "instruccion no permitida" in str(exc)
+    else:
+        raise AssertionError("Se esperaba rechazar instrucciones destructivas")
+
+
 if __name__ == "__main__":
     test_normalizar_texto()
     test_skill_1_identifica_preguntas_reales_de_usuario()
@@ -274,6 +284,7 @@ if __name__ == "__main__":
     test_plan_dinamico_genera_sql_nuevo_validado()
     test_plan_de_catalogo_reutiliza_sql_aprobado()
     test_plan_dinamico_rechaza_sql_peligroso_o_tablas_inventadas()
+    test_pregunta_con_instruccion_destructiva_se_rechaza()
 
     preguntas = [
         "Cuales son los 5 productos con mas unidades vendidas?",
