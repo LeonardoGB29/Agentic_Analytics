@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import os
+import json
 from functools import lru_cache
+from typing import List, Optional
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 
 DEFAULT_GEMINI_MODEL = "gemini-3.5-flash"
@@ -12,7 +16,7 @@ DEFAULT_GEMINI_MODELS = [
 ]
 
 
-def obtener_api_key_gemini() -> str | None:
+def obtener_api_key_gemini() -> Optional[str]:
     """
     Lee la API key desde variables de entorno.
     """
@@ -30,31 +34,12 @@ def generar_texto_gemini(prompt: str) -> str:
             "No se encontro GEMINI_API_KEY ni GOOGLE_API_KEY en variables de entorno."
         )
 
-    try:
-        from google import genai
-        from google.genai import types
-    except ImportError as exc:
-        raise RuntimeError(
-            "Falta instalar google-genai. Ejecute: pip install -r backend/requirements.txt"
-        ) from exc
-
-    client = genai.Client(api_key=api_key)
     model_names = obtener_modelos_gemini()
 
     errores = []
     for model_name in model_names:
         try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    temperature=0,
-                    top_p=0.1,
-                    max_output_tokens=2048,
-                ),
-            )
-            text = getattr(response, "text", "") or ""
-            return text.strip()
+            return _generar_texto_gemini_rest(api_key, model_name, prompt)
         except Exception as exc:
             errores.append(f"{model_name}: {exc}")
 
@@ -62,7 +47,7 @@ def generar_texto_gemini(prompt: str) -> str:
     raise RuntimeError(f"Error al llamar a Gemini con todos los modelos configurados: {detalle}")
 
 
-def obtener_modelos_gemini() -> list[str]:
+def obtener_modelos_gemini() -> List[str]:
     """
     Devuelve la lista ordenada de modelos a probar.
     """
@@ -88,31 +73,11 @@ def generar_texto_gemini_con_modelo_unico(prompt: str) -> str:
             "No se encontro GEMINI_API_KEY ni GOOGLE_API_KEY en variables de entorno."
         )
 
-    try:
-        from google import genai
-        from google.genai import types
-    except ImportError as exc:
-        raise RuntimeError(
-            "Falta instalar google-genai. Ejecute: pip install -r backend/requirements.txt"
-        ) from exc
-
-    client = genai.Client(api_key=api_key)
     model_name = os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)
     try:
-        response = client.models.generate_content(
-            model=model_name,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0,
-                top_p=0.1,
-                max_output_tokens=2048,
-            ),
-        )
+        return _generar_texto_gemini_rest(api_key, model_name, prompt)
     except Exception as exc:
         raise RuntimeError(f"Error al llamar a Gemini: {exc}") from exc
-
-    text = getattr(response, "text", "") or ""
-    return text.strip()
 
 
 def limpiar_respuesta_llm(texto: str) -> str:
@@ -128,3 +93,43 @@ def limpiar_respuesta_llm(texto: str) -> str:
             lineas = lineas[:-1]
         texto = "\n".join(lineas)
     return texto.strip().rstrip(";").strip()
+
+
+def _generar_texto_gemini_rest(api_key: str, model_name: str, prompt: str) -> str:
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{model_name}:generateContent?key={api_key}"
+    )
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0,
+            "topP": 0.1,
+            "maxOutputTokens": 2048,
+        },
+    }
+    request = Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    try:
+        with urlopen(request, timeout=45) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"HTTP {exc.code}: {body}") from exc
+    except URLError as exc:
+        raise RuntimeError(f"No se pudo conectar a Gemini: {exc}") from exc
+
+    candidates = data.get("candidates") or []
+    if not candidates:
+        raise RuntimeError(f"Gemini no devolvio candidatos: {data}")
+
+    parts = candidates[0].get("content", {}).get("parts", [])
+    text = "".join(part.get("text", "") for part in parts)
+    if not text.strip():
+        raise RuntimeError(f"Gemini devolvio una respuesta vacia: {data}")
+    return text.strip()
