@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 from typing import List
 
 try:
@@ -400,12 +401,30 @@ def validar_sql_generado(sql: str) -> None:
         raise ValueError("Gemini no devolvio SQL.")
     if not (sql_upper.startswith("SELECT") or sql_upper.startswith("WITH")):
         raise ValueError("La respuesta de Gemini no inicia con SELECT o WITH.")
-    if "USE TPCDS_BIGDATA" in sql_upper:
-        raise ValueError("El SQL no debe incluir USE tpcds_parquet.")
-    if sql_limpio.endswith(";"):
-        raise ValueError("El SQL no debe terminar en punto y coma.")
+    if ";" in sql_limpio:
+        raise ValueError("El SQL debe contener una sola sentencia sin punto y coma.")
+    if "--" in sql_limpio or "/*" in sql_limpio:
+        raise ValueError("El SQL no debe contener comentarios.")
+    prohibidas = (
+        "USE", "INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE",
+        "TRUNCATE", "MERGE", "GRANT", "REVOKE", "LOAD", "EXPORT", "IMPORT",
+    )
+    for palabra in prohibidas:
+        if re.search(rf"\b{palabra}\b", sql_upper):
+            raise ValueError(f"El SQL contiene una operacion no permitida: {palabra}.")
     if "tpcds_parquet." not in sql_limpio:
         raise ValueError("El SQL debe usar tablas calificadas con tpcds_parquet.")
+
+    tablas_permitidas = {"customer", "item", "store", "date_dim", "store_sales"}
+    tablas_usadas = set(
+        re.findall(r"tpcds_parquet\.([a-zA-Z_][a-zA-Z0-9_]*)", sql_limpio)
+    )
+    tablas_invalidas = tablas_usadas - tablas_permitidas
+    if tablas_invalidas:
+        raise ValueError(
+            "El SQL usa tablas fuera del esquema permitido: "
+            + ", ".join(sorted(tablas_invalidas))
+        )
 
 
 def skill_2_generar_sql(intencion: str) -> str:

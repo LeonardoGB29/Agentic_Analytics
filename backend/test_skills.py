@@ -2,6 +2,7 @@ import os
 
 os.environ["GEMINI_DESACTIVADO"] = "1"
 
+from skills_1_2_3 import _resolver_plan
 from skills_1_2_3 import (
     listar_intenciones_disponibles,
     normalizar_texto,
@@ -121,20 +122,20 @@ def test_skill_2_genera_sql_valido_para_todas_las_intenciones():
     for intencion in listar_intenciones_disponibles():
         sql = skill_2_generar_sql(intencion)
         assert sql.lstrip().upper().startswith(("SELECT", "WITH"))
-        assert "tpcds_bigdata." in sql
-        assert "USE TPCDS_BIGDATA" not in sql.upper()
+        assert "tpcds_parquet." in sql
+        assert "USE TPCDS_PARQUET" not in sql.upper()
         assert not sql.rstrip().endswith(";")
 
 
 def test_skill_2_sql_contiene_tablas_esperadas_en_casos_clave():
     sql = skill_2_generar_sql("top_productos_por_tienda")
-    assert "tpcds_bigdata.store_sales" in sql
-    assert "tpcds_bigdata.store" in sql
-    assert "tpcds_bigdata.item" in sql
+    assert "tpcds_parquet.store_sales" in sql
+    assert "tpcds_parquet.store" in sql
+    assert "tpcds_parquet.item" in sql
     assert "ROW_NUMBER()" in sql
 
     sql = skill_2_generar_sql("ranking_mensual_ventas")
-    assert "tpcds_bigdata.date_dim" in sql
+    assert "tpcds_parquet.date_dim" in sql
     assert "RANK()" in sql
 
 
@@ -162,9 +163,27 @@ def test_skill_1_2_3_end_to_end_con_preguntas_reales():
     for pregunta, fragmento_sql, motor_esperado in casos:
         sql, motor = skill_1_2_3(pregunta)
         assert fragmento_sql in sql
-        assert "tpcds_bigdata.store_sales" in sql
+        assert "tpcds_parquet.store_sales" in sql
         assert motor == motor_esperado
 
+
+
+
+def test_motor_especificado_en_lenguaje_natural():
+    _, motor = skill_1_2_3("Muestrame las ventas por tienda usando Hive")
+    assert motor == "hive"
+
+    _, motor = skill_1_2_3("Calcula el ticket promedio por cliente con Spark")
+    assert motor == "spark"
+
+    _, motor = skill_1_2_3("Quiero comparar las ventas por mes en Hive y Spark")
+    assert motor == "both"
+
+    _, motor = skill_1_2_3(
+        "Muestrame las ventas por tienda usando Hive",
+        modo="spark",
+    )
+    assert motor == "spark"
 
 def test_errores_controlados():
     try:
@@ -182,6 +201,65 @@ def test_errores_controlados():
         raise AssertionError("Se esperaba ValueError para modo invalido")
 
 
+
+
+def test_plan_dinamico_genera_sql_nuevo_validado():
+    plan = {
+        "tipo": "dinamica",
+        "intencion": "rentabilidad_por_estado",
+        "sql": (
+            "SELECT s.s_state, "
+            "SUM(COALESCE(ss.ss_net_profit, 0)) AS utilidad_total "
+            "FROM tpcds_parquet.store_sales ss "
+            "JOIN tpcds_parquet.store s ON ss.ss_store_sk = s.s_store_sk "
+            "GROUP BY s.s_state ORDER BY utilidad_total DESC"
+        ),
+        "motor": "spark",
+    }
+
+    sql, motor = _resolver_plan(plan)
+    assert "ss_net_profit" in sql
+    assert "tpcds_parquet.store" in sql
+    assert motor == "spark"
+
+
+def test_plan_de_catalogo_reutiliza_sql_aprobado():
+    sql, motor = _resolver_plan(
+        {
+            "tipo": "catalogo",
+            "intencion": "ventas_por_mes",
+            "sql": None,
+            "motor": "spark",
+        }
+    )
+    assert "tpcds_parquet.date_dim" in sql
+    assert motor == "spark"
+
+
+def test_plan_dinamico_rechaza_sql_peligroso_o_tablas_inventadas():
+    planes_invalidos = [
+        {
+            "tipo": "dinamica",
+            "intencion": "borrar_datos",
+            "sql": "SELECT * FROM tpcds_parquet.customer; DROP TABLE tpcds_parquet.customer",
+            "motor": "hive",
+        },
+        {
+            "tipo": "dinamica",
+            "intencion": "ventas_web",
+            "sql": "SELECT * FROM tpcds_parquet.web_sales",
+            "motor": "spark",
+        },
+    ]
+
+    for plan in planes_invalidos:
+        try:
+            _resolver_plan(plan)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Se esperaba rechazar el SQL dinamico invalido")
+
 if __name__ == "__main__":
     test_normalizar_texto()
     test_skill_1_identifica_preguntas_reales_de_usuario()
@@ -191,7 +269,11 @@ if __name__ == "__main__":
     test_skill_3_auto_selecciona_motor_esperado()
     test_skill_3_respeta_modo_manual()
     test_skill_1_2_3_end_to_end_con_preguntas_reales()
+    test_motor_especificado_en_lenguaje_natural()
     test_errores_controlados()
+    test_plan_dinamico_genera_sql_nuevo_validado()
+    test_plan_de_catalogo_reutiliza_sql_aprobado()
+    test_plan_dinamico_rechaza_sql_peligroso_o_tablas_inventadas()
 
     preguntas = [
         "Cuales son los 5 productos con mas unidades vendidas?",
