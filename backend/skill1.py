@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from typing import Optional
 
 try:
     from .gemini_utils import generar_texto_gemini, limpiar_respuesta_llm
@@ -118,7 +119,7 @@ def _tiene(texto: str, *palabras: str) -> bool:
     return any(palabra in texto for palabra in palabras)
 
 
-def _identificar_intencion_por_reglas(texto: str) -> str | None:
+def _identificar_intencion_por_reglas(texto: str) -> Optional[str]:
     """
     Respaldo local para preguntas realistas cuando Gemini no esta configurado.
     """

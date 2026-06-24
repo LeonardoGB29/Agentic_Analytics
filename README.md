@@ -3,6 +3,9 @@
 Este modulo implementa las Skills 1, 2 y 3 para un proyecto de Big Data Retail
 con TPC-DS sobre Hive y Spark.
 
+Para levantar el proyecto completo en Amazon EMR con S3, Hive, Spark, backend,
+frontend y Gemini, revisar [GUIA_EMR.md](GUIA_EMR.md).
+
 ## Que hace
 
 `backend/skills_1_2_3.py` recibe una pregunta en lenguaje natural, identifica la
@@ -19,7 +22,8 @@ motor: str
 
 ## Configuracion de Gemini
 
-Las Skills 1, 2 y 3 usan Gemini mediante el SDK actual `google-genai`.
+Las Skills 1, 2 y 3 usan Gemini mediante la API REST oficial, sin depender del
+SDK `google-genai`, para mantener compatibilidad con Python 3.7 en Amazon EMR.
 
 Instala dependencias:
 
@@ -30,13 +34,13 @@ pip install -r backend/requirements.txt
 Configura tu API key de Google AI Studio:
 
 ```bash
-set GEMINI_API_KEY=tu_api_key
+export GEMINI_API_KEY=tu_api_key
 ```
 
 Opcionalmente puedes elegir el modelo:
 
 ```bash
-set GEMINI_MODEL=gemini-3.5-flash
+export GEMINI_MODEL=gemini-3.5-flash
 ```
 
 Si no hay API key o Gemini devuelve una respuesta invalida, el modulo usa el
@@ -68,15 +72,30 @@ sql, motor = skill_1_2_3("Que productos generaron mas dinero?")
 Para correr pruebas sin gastar cuota de Gemini:
 
 ```bash
-set GEMINI_DESACTIVADO=1
+export GEMINI_DESACTIVADO=1
 python backend/test_skills.py
 ```
 
 Para volver a usar Gemini, elimina esa variable en la terminal actual:
 
 ```bash
-set GEMINI_DESACTIVADO=
+unset GEMINI_DESACTIVADO
 ```
+
+## Consultas fuera del catalogo
+
+El agente usa un flujo hibrido en una sola llamada a Gemini:
+
+1. Si la pregunta coincide con una intencion conocida, Gemini devuelve
+   `tipo="catalogo"` y se usa el SQL aprobado en `skill2.py`.
+2. Si es una pregunta analitica nueva que puede resolverse con las cinco tablas,
+   Gemini devuelve `tipo="dinamica"`, genera el SQL y selecciona Hive o Spark.
+3. Si la pregunta no es analitica o requiere columnas que no existen, devuelve
+   `tipo="no_analitica"` y el sistema la rechaza.
+
+El SQL dinamico se valida antes de llegar a Skill 4. Solo se permiten consultas
+`SELECT`/`WITH`, las tablas de `tpcds_parquet` y una unica sentencia. Se
+rechazan DDL, DML, comentarios, tablas inventadas y operaciones destructivas.
 
 ## Archivos
 

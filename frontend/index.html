@@ -56,7 +56,7 @@ const RESPONSES = {
     heroValue:'18 420', heroUnit:'unidades', heroLabel:'Producto A — el más vendido del catálogo',
     summary:'El catálogo está muy concentrado: el Top 3 acumula casi el 45 % de las unidades. «Producto A» lidera con 18 420 unidades, un 20 % por encima del segundo. Conviene asegurar su disponibilidad de stock.',
     sql:"SELECT i.i_item_desc, SUM(ss.ss_quantity) AS unidades\nFROM store_sales ss\nJOIN item i ON ss.ss_item_sk = i.i_item_sk\nGROUP BY i.i_item_desc\nORDER BY unidades DESC\nLIMIT 10",
-    hive:24.8, spark:6.3, matched:17920,
+    hive:24.8, spark:6.3, hive_cpu:72.4, hive_mem:412.3, spark_cpu:45.8, spark_mem:286.1, matched:17920,
     cols:['producto','unidades'],
     rows:[['Producto A','18 420'],['Producto B','15 310'],['Producto C','14 002'],['Producto D','11 890'],['Producto E','9 740'],['Producto F','8 905'],['Producto G','7 612'],['Producto H','6 480'],['Producto I','5 933'],['Producto J','5 110']],
     chartTitle:'Unidades vendidas · Top 8',
@@ -71,7 +71,7 @@ const RESPONSES = {
     heroValue:'$2,84 M', heroUnit:'ingresos', heroLabel:'Tienda Eastgate — la #1 de la red',
     summary:'Las ventas están repartidas entre tiendas urbanas. «Eastgate» encabeza con $2,84 M, pero la diferencia con la quinta es de apenas 1,7×: una red equilibrada sin un único punto crítico.',
     sql:"SELECT s.s_store_name, SUM(ss.ss_net_paid) AS ingresos\nFROM store_sales ss\nJOIN store s ON ss.ss_store_sk = s.s_store_sk\nGROUP BY s.s_store_name\nORDER BY ingresos DESC\nLIMIT 10",
-    hive:31.2, spark:7.9, matched:102,
+    hive:31.2, spark:7.9, hive_cpu:68.1, hive_mem:389.7, spark_cpu:41.2, spark_mem:245.5, matched:102,
     cols:['tienda','ingresos'],
     rows:[['Tienda Eastgate','$2,84 M'],['Tienda Lakeview','$2,51 M'],['Tienda Northpark','$2,18 M'],['Tienda Riverside','$1,97 M'],['Tienda Summit','$1,64 M'],['Tienda Brookside','$1,52 M'],['Tienda Fairview','$1,41 M'],['Tienda Glenwood','$1,28 M'],['Tienda Highgate','$1,12 M'],['Tienda Westend','$0,98 M']],
     chartTitle:'Ingresos por tienda · Top 8',
@@ -86,7 +86,7 @@ const RESPONSES = {
     heroValue:'$4,12 M', heroUnit:'ingresos', heroLabel:'Diciembre — mes pico del año',
     summary:'La estacionalidad es marcada: Diciembre concentra el pico de ingresos ($4,12 M), un 12 % sobre Noviembre. El segundo semestre supera con claridad al primero: clave para planear inventario.',
     sql:"SELECT d.d_moy AS mes, SUM(ss.ss_net_paid) AS ingresos\nFROM store_sales ss\nJOIN date_dim d ON ss.ss_sold_date_sk = d.d_date_sk\nGROUP BY d.d_moy\nORDER BY ingresos DESC",
-    hive:19.5, spark:5.1, matched:12,
+    hive:19.5, spark:5.1, hive_cpu:55.3, hive_mem:310.2, spark_cpu:32.7, spark_mem:198.4, matched:12,
     cols:['mes','ingresos'],
     rows:[['Diciembre','$4,12 M'],['Noviembre','$3,68 M'],['Julio','$2,94 M'],['Agosto','$2,71 M'],['Marzo','$2,40 M'],['Octubre','$2,22 M'],['Mayo','$2,05 M'],['Junio','$1,98 M'],['Abril','$1,86 M'],['Septiembre','$1,74 M'],['Enero','$1,52 M'],['Febrero','$1,38 M']],
     chartTitle:'Ingresos por mes · Top 8',
@@ -101,7 +101,7 @@ const RESPONSES = {
     heroValue:'$48 920', heroUnit:'en compras', heroLabel:'Claudia Martínez — cliente top',
     summary:'La base de clientes tiene una cola larga: el mejor cliente gastó $48 920, pero ninguno supera el 0,3 % del total. No hay dependencia de cuentas individuales, lo que reduce el riesgo de concentración.',
     sql:"SELECT c.c_first_name, c.c_last_name, SUM(ss.ss_net_paid) AS gasto\nFROM store_sales ss\nJOIN customer c ON ss.ss_customer_sk = c.c_customer_sk\nGROUP BY c.c_first_name, c.c_last_name\nORDER BY gasto DESC\nLIMIT 10",
-    hive:28.7, spark:8.4, matched:24580,
+    hive:28.7, spark:8.4, hive_cpu:78.9, hive_mem:445.6, spark_cpu:52.3, spark_mem:312.8, matched:24580,
     cols:['cliente','gasto'],
     rows:[['Claudia Martínez','$48 920'],['Diego Fuentes','$44 105'],['Renata Ospina','$41 780'],['Mateo Carvajal','$39 240'],['Lucía Bermúdez','$36 510'],['Andrés Pineda','$34 880'],['Sofía Quintero','$32 145'],['Tomás Vargas','$30 770'],['Valentina Ríos','$28 990'],['Camilo Herrera','$27 305']],
     chartTitle:'Gasto por cliente · Top 8',
@@ -153,6 +153,8 @@ let _timer = null;
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function fmtNum(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
 function fmtTime(v){ return v != null ? v.toFixed(1).replace('.', ',') + ' s' : '—'; }
+function fmtCpu(v){ return v != null ? v.toFixed(1).replace('.', ',') + '%' : '—'; }
+function fmtMem(v){ return v != null ? v.toFixed(1).replace('.', ',') + ' MB' : '—'; }
 function fmtPct(v){ return (Number.isFinite(v)?v:0).toFixed(1).replace('.', ',') + '%'; }
 function cap(s){ s=String(s||''); return s ? s.charAt(0).toUpperCase()+s.slice(1) : ''; }
 function mix(t){
@@ -171,6 +173,17 @@ function timeBarsFor(r){
   const max=Math.max(0.001,...bars.map(b=>b.raw));
   return bars.map(b=>({label:b.label,color:b.color,pct:Math.max(3,b.raw/max*100),value:fmtTime(b.raw)}));
 }
+function cpuBarsFor(r){
+  let bars=[{label:'Hive',raw:r.hive_cpu,color:'#15479B'},{label:'Spark',raw:r.spark_cpu,color:'#8CC63F'}].filter(b=>b.raw!=null);
+  bars=filterEngine(bars);
+  return bars.map(b=>({label:b.label,color:b.color,pct:Math.max(3,Math.min(b.raw,100)),value:fmtCpu(b.raw)}));
+}
+function memBarsFor(r){
+  let bars=[{label:'Hive',raw:r.hive_mem,color:'#15479B'},{label:'Spark',raw:r.spark_mem,color:'#8CC63F'}].filter(b=>b.raw!=null);
+  bars=filterEngine(bars);
+  const max=Math.max(0.001,...bars.map(b=>b.raw));
+  return bars.map(b=>({label:b.label,color:b.color,pct:Math.max(3,b.raw/max*100),value:fmtMem(b.raw)}));
+}
 function chartRowsFor(r){
   const rows=(r.chart||[]).map((c,idx)=>({idx,label:c.label,value:Number(c.value)||0,valueFmt:c.valueFmt||fmtNum(c.value)}));
   rows.sort((a,b)=>state.chartSort==='asc' ? a.value-b.value : b.value-a.value);
@@ -181,6 +194,28 @@ function chartStats(r){
   const total=rows.reduce((a,c)=>a+Math.max(0,c.value),0);
   const max=Math.max(0.001,...rows.map(c=>Math.abs(c.value)));
   return {rows,total,max};
+}
+function errorResponse(message){
+  const clean = message || 'No se pudo procesar la pregunta.';
+  return {
+    error:true,
+    heroValue:'Sin resultado',
+    heroUnit:'',
+    heroLabel:'Pregunta no procesada',
+    summary:clean,
+    sql:'',
+    hive:null,
+    spark:null,
+    hive_cpu:null,
+    spark_cpu:null,
+    hive_mem:null,
+    spark_mem:null,
+    matched:0,
+    cols:['mensaje','detalle'],
+    rows:[['Error', clean]],
+    chartTitle:'Sin grafica',
+    chart:[],
+  };
 }
 
 /* ── SKILL 1 (local) — intención. Al conectar Gemini, lo resuelve el servidor. ── */
@@ -220,15 +255,28 @@ function sendBackend(text){
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({question:text, engine:state.engine}),
   })
-  .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+  .then(async r=>{
+    const data = await r.json().catch(()=>null);
+    if(!r.ok){
+      const detail = data && (data.error || data.message || data.detail);
+      throw new Error(detail || 'HTTP '+r.status);
+    }
+    return data;
+  })
   .then(resp=>{
     state.messages.push({role:'agent', resp, tab:'resumen'});  // resp = salida de skill_5_to_json
     state.thinking=false;
     render();
   })
   .catch(err=>{
-    console.error('[Agente] backend falló, usando mock:', err);
-    sendMock(text);  // si el backend no responde, cae a datos locales
+    console.error('[Agente] backend falló:', err);
+    state.messages.push({
+      role:'agent',
+      resp:errorResponse(`${err.message || err}. Prueba una consulta del catalogo, por ejemplo: productos mas vendidos, ventas por tienda, ventas por mes o mejores clientes.`),
+      tab:'resumen',
+    });
+    state.thinking=false;
+    render();
   });
 }
 
@@ -429,6 +477,8 @@ function renderAgent(msg, i){
   const activeTab=(msg.tab && avail.includes(msg.tab)) ? msg.tab : (avail[0]||null);
   const bothEngines=state.engine==='ambos';
   const speedup=(r.hive!=null && r.spark!=null) ? (r.hive/r.spark).toFixed(1).replace('.',',') : '—';
+  const hasComparison = r.hive!=null && r.spark!=null;
+  const rowCount = Array.isArray(r.rows) ? r.rows.length : 0;
 
   const avatar=`<div style="flex:none;width:36px;height:36px;border-radius:10px;background:linear-gradient(160deg,#1E2533,#161B26);border:1px solid rgba(141,198,63,0.3);display:flex;align-items:flex-end;justify-content:center;gap:3px;padding:8px;">
     <div style="width:4px;height:8px;border-radius:2px;background:#15479B;"></div>
@@ -462,9 +512,9 @@ function renderAgent(msg, i){
       </div>
       <div style="font-size:14.5px;line-height:1.6;color:#E6E8EC;">${esc(r.summary)}</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;">
-        <span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#8CC63F;background:rgba(141,198,63,0.1);border:1px solid rgba(141,198,63,0.28);border-radius:999px;padding:5px 11px;font-weight:600;"><span style="width:6px;height:6px;border-radius:999px;background:#8CC63F;"></span>Spark ${speedup}× más rápido</span>
+        ${hasComparison ? `<span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#8CC63F;background:rgba(141,198,63,0.1);border:1px solid rgba(141,198,63,0.28);border-radius:999px;padding:5px 11px;font-weight:600;"><span style="width:6px;height:6px;border-radius:999px;background:#8CC63F;"></span>Spark ${speedup}× más rápido</span>` : ''}
         <span style="font-size:11.5px;color:#9DA1A6;background:rgba(157,161,166,0.1);border:1px solid rgba(157,161,166,0.2);border-radius:999px;padding:5px 11px;">${fmtNum(r.matched)} coincidencias</span>
-        <span style="font-size:11.5px;color:#9DA1A6;background:rgba(157,161,166,0.1);border:1px solid rgba(157,161,166,0.2);border-radius:999px;padding:5px 11px;">${r.rows.length} filas recuperadas</span>
+        <span style="font-size:11.5px;color:#9DA1A6;background:rgba(157,161,166,0.1);border:1px solid rgba(157,161,166,0.2);border-radius:999px;padding:5px 11px;">${rowCount} filas recuperadas</span>
       </div>
     </div>`;
   }
@@ -478,21 +528,33 @@ function renderAgent(msg, i){
         <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#9DA1A6;font-weight:600;">SQL generado</div>
         <pre style="margin:7px 0 0;background:#0E1320;border:1px solid rgba(255,255,255,0.05);border-left:3px solid #8CC63F;border-radius:10px;padding:13px 15px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.65;color:#C9D1D9;overflow-x:auto;white-space:pre;">${esc(r.sql)}</pre>
       </div>` : '';
-    const timeBlock = sh.tiempos ? `<div>
-        <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#9DA1A6;font-weight:600;">Tiempo de ejecución</div>
-        ${timeBarsFor(r).map(tb=>`<div style="display:flex;align-items:center;gap:10px;margin-top:9px;">
+    const _metricBar = (tb) => `<div style="display:flex;align-items:center;gap:10px;margin-top:9px;">
           <span style="display:flex;align-items:center;gap:6px;width:62px;font-size:12px;color:#C9D1D9;"><span style="width:8px;height:8px;border-radius:2px;background:${tb.color};"></span>${tb.label}</span>
           <div style="flex:1;height:9px;border-radius:999px;background:rgba(157,161,166,0.1);overflow:hidden;">
             <div style="height:100%;border-radius:999px;transition:width .6s cubic-bezier(.2,.8,.2,1);width:${tb.pct}%;background:${tb.color};"></div>
           </div>
-          <span style="width:56px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:#E6E8EC;">${tb.value}</span>
-        </div>`).join('')}
+          <span style="width:72px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:#E6E8EC;">${tb.value}</span>
+        </div>`;
+    const timeBlock = sh.tiempos ? `<div>
+        <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#9DA1A6;font-weight:600;">Tiempo de ejecución</div>
+        ${timeBarsFor(r).map(_metricBar).join('')}
       </div>` : '';
-    body=`<div style="display:flex;flex-direction:column;gap:16px;padding-top:2px;">${both}${sqlBlock}${timeBlock}</div>`;
+    const _cpuBars = cpuBarsFor(r);
+    const cpuBlock = sh.tiempos && _cpuBars.length ? `<div>
+        <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#9DA1A6;font-weight:600;">Uso de CPU</div>
+        ${_cpuBars.map(_metricBar).join('')}
+      </div>` : '';
+    const _memBars = memBarsFor(r);
+    const memBlock = sh.tiempos && _memBars.length ? `<div>
+        <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#9DA1A6;font-weight:600;">Uso de memoria</div>
+        ${_memBars.map(_metricBar).join('')}
+      </div>` : '';
+    body=`<div style="display:flex;flex-direction:column;gap:16px;padding-top:2px;">${both}${sqlBlock}${timeBlock}${cpuBlock}${memBlock}</div>`;
   }
   else if(activeTab==='resultados'){
-    const visN=state.rowsVisible>=9999 ? r.rows.length : state.rowsVisible;
-    const visRows=r.rows.slice(0,visN);
+    const sourceRows=Array.isArray(r.rows) ? r.rows : [];
+    const visN=state.rowsVisible>=9999 ? sourceRows.length : state.rowsVisible;
+    const visRows=sourceRows.slice(0,visN);
     const cstats=chartStats(r);
     const chartByLabel=new Map(cstats.rows.map(c=>[String(c.label),c]));
     const rowsOpts=ROWS_OPTS.map(o=>{
@@ -518,7 +580,7 @@ function renderAgent(msg, i){
     }).join('');
     body=`<div style="display:flex;flex-direction:column;gap:12px;padding-top:2px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-        <div style="font-size:12.5px;color:#C9D1D9;">Mostrando <strong style="color:#fff;">${visRows.length}</strong> de ${r.rows.length} filas <span style="color:#6B7280;">· ${fmtNum(r.matched)} coincidencias</span></div>
+        <div style="font-size:12.5px;color:#C9D1D9;">Mostrando <strong style="color:#fff;">${visRows.length}</strong> de ${sourceRows.length} filas <span style="color:#6B7280;">· ${fmtNum(r.matched)} coincidencias</span></div>
         <div style="display:flex;align-items:center;gap:6px;">
           <span style="font-size:11px;color:#6B7280;">Ver</span>
           <div style="display:flex;gap:3px;background:#0E1320;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:3px;">${rowsOpts}</div>

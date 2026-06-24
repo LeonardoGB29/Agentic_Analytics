@@ -21,3 +21,6 @@ deploy.env
 
 # Logs
 *.log
+
+# Local benchmark outputs
+benchmark_results/

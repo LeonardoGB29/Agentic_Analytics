@@ -1,4 +1,6 @@
 from __future__ import annotations
+import re
+from typing import List
 
 try:
     from .skill1 import normalizar_texto
@@ -31,8 +33,8 @@ SQL_POR_INTENCION = {
     c.c_customer_id,
     CONCAT(COALESCE(c.c_first_name, ''), ' ', COALESCE(c.c_last_name, '')) AS cliente,
     COUNT(*) AS numero_compras
-FROM tpcds_bigdata.store_sales ss
-JOIN tpcds_bigdata.customer c
+FROM tpcds_parquet.store_sales ss
+JOIN tpcds_parquet.customer c
     ON ss.ss_customer_sk = c.c_customer_sk
 GROUP BY
     c.c_customer_sk,
@@ -48,8 +50,8 @@ LIMIT 20""",
     s.s_city,
     s.s_country,
     SUM(COALESCE(ss.ss_net_paid, 0)) AS ventas_totales
-FROM tpcds_bigdata.store_sales ss
-JOIN tpcds_bigdata.store s
+FROM tpcds_parquet.store_sales ss
+JOIN tpcds_parquet.store s
     ON ss.ss_store_sk = s.s_store_sk
 GROUP BY
     s.s_store_sk,
@@ -62,8 +64,8 @@ ORDER BY ventas_totales DESC""",
     d.d_year AS anio,
     d.d_moy AS mes,
     SUM(COALESCE(ss.ss_net_paid, 0)) AS ventas_totales
-FROM tpcds_bigdata.store_sales ss
-JOIN tpcds_bigdata.date_dim d
+FROM tpcds_parquet.store_sales ss
+JOIN tpcds_parquet.date_dim d
     ON ss.ss_sold_date_sk = d.d_date_sk
 GROUP BY
     d.d_year,
@@ -74,8 +76,8 @@ ORDER BY
     "ventas_por_dia_semana": """SELECT
     d.d_day_name AS dia_semana,
     SUM(COALESCE(ss.ss_net_paid, 0)) AS ventas_totales
-FROM tpcds_bigdata.store_sales ss
-JOIN tpcds_bigdata.date_dim d
+FROM tpcds_parquet.store_sales ss
+JOIN tpcds_parquet.date_dim d
     ON ss.ss_sold_date_sk = d.d_date_sk
 GROUP BY
     d.d_day_name
@@ -87,10 +89,10 @@ ORDER BY ventas_totales DESC""",
         i.i_item_id,
         COALESCE(i.i_product_name, i.i_item_desc) AS producto,
         SUM(COALESCE(ss.ss_quantity, 0)) AS cantidad_vendida
-    FROM tpcds_bigdata.store_sales ss
-    JOIN tpcds_bigdata.store s
+    FROM tpcds_parquet.store_sales ss
+    JOIN tpcds_parquet.store s
         ON ss.ss_store_sk = s.s_store_sk
-    JOIN tpcds_bigdata.item i
+    JOIN tpcds_parquet.item i
         ON ss.ss_item_sk = i.i_item_sk
     GROUP BY
         s.s_store_id,
@@ -129,8 +131,8 @@ ORDER BY s_store_id, ranking""",
     COUNT(*) AS numero_compras,
     SUM(COALESCE(ss.ss_net_paid, 0)) AS gasto_total,
     AVG(COALESCE(ss.ss_net_paid, 0)) AS ticket_promedio
-FROM tpcds_bigdata.store_sales ss
-JOIN tpcds_bigdata.customer c
+FROM tpcds_parquet.store_sales ss
+JOIN tpcds_parquet.customer c
     ON ss.ss_customer_sk = c.c_customer_sk
 GROUP BY
     c.c_customer_sk,
@@ -146,8 +148,8 @@ LIMIT 20""",
     i.i_category,
     i.i_brand,
     SUM(COALESCE(ss.ss_net_paid, 0)) AS ingreso_generado
-FROM tpcds_bigdata.store_sales ss
-JOIN tpcds_bigdata.item i
+FROM tpcds_parquet.store_sales ss
+JOIN tpcds_parquet.item i
     ON ss.ss_item_sk = i.i_item_sk
 GROUP BY
     i.i_item_sk,
@@ -163,8 +165,8 @@ LIMIT 20""",
     c.c_customer_id,
     CONCAT(COALESCE(c.c_first_name, ''), ' ', COALESCE(c.c_last_name, '')) AS cliente,
     SUM(COALESCE(ss.ss_net_paid, 0)) AS gasto_total
-FROM tpcds_bigdata.store_sales ss
-JOIN tpcds_bigdata.customer c
+FROM tpcds_parquet.store_sales ss
+JOIN tpcds_parquet.customer c
     ON ss.ss_customer_sk = c.c_customer_sk
 GROUP BY
     c.c_customer_sk,
@@ -180,10 +182,10 @@ LIMIT 20""",
         s.s_store_id,
         s.s_store_name,
         SUM(COALESCE(ss.ss_net_paid, 0)) AS ventas_totales
-    FROM tpcds_bigdata.store_sales ss
-    JOIN tpcds_bigdata.date_dim d
+    FROM tpcds_parquet.store_sales ss
+    JOIN tpcds_parquet.date_dim d
         ON ss.ss_sold_date_sk = d.d_date_sk
-    JOIN tpcds_bigdata.store s
+    JOIN tpcds_parquet.store s
         ON ss.ss_store_sk = s.s_store_sk
     GROUP BY
         d.d_year,
@@ -218,8 +220,8 @@ ORDER BY anio, mes, ranking_mensual""",
     i.i_item_id,
     COALESCE(i.i_product_name, i.i_item_desc) AS producto,
     SUM(COALESCE(ss.ss_quantity, 0)) AS cantidad_vendida
-FROM tpcds_bigdata.store_sales ss
-JOIN tpcds_bigdata.item i
+FROM tpcds_parquet.store_sales ss
+JOIN tpcds_parquet.item i
     ON ss.ss_item_sk = i.i_item_sk
 GROUP BY
     i.i_item_id,
@@ -231,8 +233,8 @@ LIMIT 5""",
     s.s_store_id,
     s.s_store_name,
     SUM(COALESCE(ss.ss_net_paid, 0)) AS ventas_totales
-FROM tpcds_bigdata.store_sales ss
-JOIN tpcds_bigdata.store s
+FROM tpcds_parquet.store_sales ss
+JOIN tpcds_parquet.store s
     ON ss.ss_store_sk = s.s_store_sk
 GROUP BY
     s.s_store_id,
@@ -243,8 +245,8 @@ LIMIT 1""",
     d.d_year AS anio,
     d.d_moy AS mes,
     SUM(COALESCE(ss.ss_net_paid, 0)) AS ingresos_totales
-FROM tpcds_bigdata.store_sales ss
-JOIN tpcds_bigdata.date_dim d
+FROM tpcds_parquet.store_sales ss
+JOIN tpcds_parquet.date_dim d
     ON ss.ss_sold_date_sk = d.d_date_sk
 GROUP BY
     d.d_year,
@@ -256,8 +258,8 @@ LIMIT 1""",
     c.c_customer_id,
     CONCAT(COALESCE(c.c_first_name, ''), ' ', COALESCE(c.c_last_name, '')) AS cliente,
     SUM(COALESCE(ss.ss_net_paid, 0)) AS gasto_total
-FROM tpcds_bigdata.store_sales ss
-JOIN tpcds_bigdata.customer c
+FROM tpcds_parquet.store_sales ss
+JOIN tpcds_parquet.customer c
     ON ss.ss_customer_sk = c.c_customer_sk
 GROUP BY
     c.c_customer_sk,
@@ -269,16 +271,16 @@ LIMIT 10""",
 }
 
 
-ESQUEMA_TPCDS = """Base de datos: tpcds_bigdata
+ESQUEMA_TPCDS = """Base de datos: tpcds_parquet
 
-Tabla tpcds_bigdata.customer:
+Tabla tpcds_parquet.customer:
 - c_customer_sk INT
 - c_customer_id STRING
 - c_first_name STRING
 - c_last_name STRING
 - c_email_address STRING
 
-Tabla tpcds_bigdata.item:
+Tabla tpcds_parquet.item:
 - i_item_sk INT
 - i_item_id STRING
 - i_item_desc STRING
@@ -286,7 +288,7 @@ Tabla tpcds_bigdata.item:
 - i_category STRING
 - i_brand STRING
 
-Tabla tpcds_bigdata.store:
+Tabla tpcds_parquet.store:
 - s_store_sk INT
 - s_store_id STRING
 - s_store_name STRING
@@ -294,14 +296,14 @@ Tabla tpcds_bigdata.store:
 - s_state STRING
 - s_country STRING
 
-Tabla tpcds_bigdata.date_dim:
+Tabla tpcds_parquet.date_dim:
 - d_date_sk INT
 - d_date DATE
 - d_year INT
 - d_moy INT
 - d_day_name STRING
 
-Tabla tpcds_bigdata.store_sales:
+Tabla tpcds_parquet.store_sales:
 - ss_sold_date_sk INT
 - ss_item_sk INT
 - ss_customer_sk INT
@@ -343,7 +345,7 @@ def skill_2_generar_sql(intencion: str) -> str:
         ) from exc
 
 
-def listar_intenciones_disponibles() -> list[str]:
+def listar_intenciones_disponibles() -> List[str]:
     """
     Devuelve la lista de intenciones soportadas.
     """
@@ -376,8 +378,8 @@ Ejemplos few-shot:
 {FEW_SHOTS_SQL}
 
 Reglas obligatorias:
-- Usa siempre nombres de tablas calificados con base de datos, por ejemplo tpcds_bigdata.store_sales.
-- No incluyas USE tpcds_bigdata.
+- Usa siempre nombres de tablas calificados con base de datos, por ejemplo tpcds_parquet.store_sales.
+- No incluyas USE tpcds_parquet.
 - No agregues punto y coma al final.
 - Devuelve unicamente SQL valido para Hive/Spark.
 - No uses Markdown, explicaciones, comentarios ni texto adicional.
@@ -399,12 +401,30 @@ def validar_sql_generado(sql: str) -> None:
         raise ValueError("Gemini no devolvio SQL.")
     if not (sql_upper.startswith("SELECT") or sql_upper.startswith("WITH")):
         raise ValueError("La respuesta de Gemini no inicia con SELECT o WITH.")
-    if "USE TPCDS_BIGDATA" in sql_upper:
-        raise ValueError("El SQL no debe incluir USE tpcds_bigdata.")
-    if sql_limpio.endswith(";"):
-        raise ValueError("El SQL no debe terminar en punto y coma.")
-    if "tpcds_bigdata." not in sql_limpio:
-        raise ValueError("El SQL debe usar tablas calificadas con tpcds_bigdata.")
+    if ";" in sql_limpio:
+        raise ValueError("El SQL debe contener una sola sentencia sin punto y coma.")
+    if "--" in sql_limpio or "/*" in sql_limpio:
+        raise ValueError("El SQL no debe contener comentarios.")
+    prohibidas = (
+        "USE", "INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE",
+        "TRUNCATE", "MERGE", "GRANT", "REVOKE", "LOAD", "EXPORT", "IMPORT",
+    )
+    for palabra in prohibidas:
+        if re.search(rf"\b{palabra}\b", sql_upper):
+            raise ValueError(f"El SQL contiene una operacion no permitida: {palabra}.")
+    if "tpcds_parquet." not in sql_limpio:
+        raise ValueError("El SQL debe usar tablas calificadas con tpcds_parquet.")
+
+    tablas_permitidas = {"customer", "item", "store", "date_dim", "store_sales"}
+    tablas_usadas = set(
+        re.findall(r"tpcds_parquet\.([a-zA-Z_][a-zA-Z0-9_]*)", sql_limpio)
+    )
+    tablas_invalidas = tablas_usadas - tablas_permitidas
+    if tablas_invalidas:
+        raise ValueError(
+            "El SQL usa tablas fuera del esquema permitido: "
+            + ", ".join(sorted(tablas_invalidas))
+        )
 
 
 def skill_2_generar_sql(intencion: str) -> str:
