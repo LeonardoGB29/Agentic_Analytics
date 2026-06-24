@@ -10,7 +10,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS dbgen_version (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/dbgen_version/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/dbgen_version/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS customer_address (
     ca_address_sk     int,
@@ -29,7 +29,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS customer_address (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/customer_address/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/customer_address/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS customer_demographics (
     cd_demo_sk            int,
@@ -44,7 +44,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS customer_demographics (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/customer_demographics/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/customer_demographics/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS date_dim (
     d_date_sk             int,
@@ -78,7 +78,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS date_dim (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/date_dim/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/date_dim/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS warehouse (
     w_warehouse_sk    int,
@@ -98,7 +98,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS warehouse (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/warehouse/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/warehouse/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS ship_mode (
     sm_ship_mode_sk   int,
@@ -110,7 +110,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS ship_mode (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/ship_mode/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/ship_mode/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS time_dim (
     t_time_sk         int,
@@ -126,7 +126,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS time_dim (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/time_dim/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/time_dim/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS reason (
     r_reason_sk       int,
@@ -135,7 +135,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS reason (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/reason/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/reason/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS income_band (
     ib_income_band_sk int,
@@ -144,7 +144,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS income_band (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/income_band/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/income_band/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS item (
     i_item_sk         int,
@@ -172,7 +172,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS item (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/item/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/item/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS store (
     s_store_sk        int,
@@ -207,7 +207,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS store (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/store/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/store/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS call_center (
     cc_call_center_sk int,
@@ -244,7 +244,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS call_center (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/call_center/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/call_center/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS customer (
     c_customer_sk          int,
@@ -268,7 +268,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS customer (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/customer/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/customer/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS web_site (
     web_site_sk        int,
@@ -300,7 +300,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS web_site (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/web_site/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/web_site/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS store_returns (
     sr_returned_date_sk   int,
@@ -326,7 +326,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS store_returns (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/store_returns/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/store_returns/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS household_demographics (
     hd_demo_sk        int,
@@ -337,7 +337,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS household_demographics (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/household_demographics/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/household_demographics/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS web_page (
     wp_web_page_sk      int,
@@ -357,7 +357,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS web_page (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/web_page/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/web_page/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS promotion (
     p_promo_sk        int,
@@ -382,7 +382,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS promotion (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/promotion/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/promotion/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS catalog_page (
     cp_catalog_page_sk     int,
@@ -397,7 +397,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS catalog_page (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/catalog_page/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/catalog_page/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS inventory (
     inv_date_sk          int,
@@ -407,7 +407,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS inventory (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/inventory/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/inventory/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS catalog_returns (
     cr_returned_date_sk      int,
@@ -440,7 +440,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS catalog_returns (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/catalog_returns/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/catalog_returns/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS web_returns (
     wr_returned_date_sk      int,
@@ -470,7 +470,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS web_returns (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/web_returns/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/web_returns/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS web_sales (
     ws_sold_date_sk          int,
@@ -510,7 +510,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS web_sales (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/web_sales/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/web_sales/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS catalog_sales (
     cs_sold_date_sk          int,
@@ -550,7 +550,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS catalog_sales (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/catalog_sales/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/catalog_sales/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS store_sales (
     ss_sold_date_sk       int,
@@ -579,4 +579,4 @@ CREATE EXTERNAL TABLE IF NOT EXISTS store_sales (
 )
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 STORED AS TEXTFILE
-LOCATION 's3://tpcds-bigdata-unsa-2026/data/store_sales/';
+LOCATION 's3://tpcds-bigdata-kevin-2026/data/store_sales/';

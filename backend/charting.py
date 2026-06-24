@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Dict, List, Optional, Tuple
 
 
 LABEL_HINTS = (
@@ -25,7 +25,7 @@ METRIC_HINTS = (
 )
 
 
-def extraer_resultado_base(resultado) -> tuple[list[str], list[tuple]]:
+def extraer_resultado_base(resultado) -> Tuple[List[str], List[Tuple]]:
     """
     Toma la salida de Skill 4 y devuelve columnas/filas para graficar.
 
@@ -43,7 +43,7 @@ def extraer_resultado_base(resultado) -> tuple[list[str], list[tuple]]:
     return cols, rows
 
 
-def construir_meta_graficos(cols: list[str], rows: list[Any]) -> dict:
+def construir_meta_graficos(cols: List[str], rows: List[Any]) -> Dict:
     rows_list = [_row_to_list(row) for row in rows]
     if not rows_list:
         return {
@@ -108,7 +108,7 @@ def construir_meta_graficos(cols: list[str], rows: list[Any]) -> dict:
     }
 
 
-def _row_to_list(row: Any) -> list[Any]:
+def _row_to_list(row: Any) -> List[Any]:
     if isinstance(row, dict):
         return list(row.values())
     if hasattr(row, "asDict"):
@@ -116,7 +116,7 @@ def _row_to_list(row: Any) -> list[Any]:
     return list(row)
 
 
-def _encontrar_columna_metrica(cols: list[str], rows: list[list[Any]]) -> int | None:
+def _encontrar_columna_metrica(cols: List[str], rows: List[List[Any]]) -> Optional[int]:
     for hint in METRIC_HINTS:
         for idx, col in enumerate(cols):
             if hint == col or hint in col:
@@ -129,7 +129,7 @@ def _encontrar_columna_metrica(cols: list[str], rows: list[list[Any]]) -> int | 
     return None
 
 
-def _encontrar_columna_etiqueta(cols: list[str], metric_idx: int | None) -> int | None:
+def _encontrar_columna_etiqueta(cols: List[str], metric_idx: Optional[int]) -> Optional[int]:
     for hint in LABEL_HINTS:
         for idx, col in enumerate(cols):
             if idx != metric_idx and (hint == col or hint in col):
@@ -141,7 +141,7 @@ def _encontrar_columna_etiqueta(cols: list[str], metric_idx: int | None) -> int 
     return None
 
 
-def _columna_es_numerica(rows: list[list[Any]], idx: int) -> bool:
+def _columna_es_numerica(rows: List[List[Any]], idx: int) -> bool:
     muestras = rows[: min(10, len(rows))]
     if not muestras:
         return False

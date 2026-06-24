@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from typing import Optional, Tuple
 
 try:
     from .gemini_utils import generar_texto_gemini, limpiar_respuesta_llm
@@ -25,7 +26,7 @@ except ImportError:
     from skill3 import _seleccionar_motor_por_regla, skill_3_seleccionar_motor
 
 
-def skill_1_2_3(pregunta: str, modo: str = "auto") -> tuple[str, str]:
+def skill_1_2_3(pregunta: str, modo: str = "auto") -> Tuple[str, str]:
     """
     Funcion principal optimizada.
     Recibe una pregunta en lenguaje natural y devuelve sql, motor.
@@ -78,7 +79,7 @@ def _generar_sql_catalogo(intencion: str) -> str:
         ) from exc
 
 
-def _planificar_con_gemini(pregunta: str) -> tuple[str, str | None]:
+def _planificar_con_gemini(pregunta: str) -> Tuple[str, Optional[str]]:
     respuesta = limpiar_respuesta_llm(generar_texto_gemini(_construir_prompt_plan(pregunta)))
     try:
         data = json.loads(respuesta)

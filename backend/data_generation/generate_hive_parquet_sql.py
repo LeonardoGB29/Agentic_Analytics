@@ -17,18 +17,18 @@ sql_content = sql_content.replace("USE tpcds_bigdata;", "USE tpcds_parquet;")
 # Buscamos la estructura:
 # ROW FORMAT DELIMITED FIELDS TERMINATED BY '|' 
 # STORED AS TEXTFILE
-# LOCATION 's3://tpcds-bigdata-unsa-2026/data/...';
+# LOCATION 's3://tpcds-bigdata-kevin-2026/data/...';
 
 # Expresión regular para capturar la definición de formato, almacenamiento y ubicación
 pattern = re.compile(
-    r"ROW FORMAT DELIMITED FIELDS TERMINATED BY '\|'\s*\n\s*STORED AS TEXTFILE\s*\n\s*LOCATION\s+'s3://tpcds-bigdata-unsa-2026/data/([^']+)/';",
+    r"ROW FORMAT DELIMITED FIELDS TERMINATED BY '\|'\s*\n\s*STORED AS TEXTFILE\s*\n\s*LOCATION\s+'s3://tpcds-bigdata-kevin-2026/data/([^']+)/';",
     re.IGNORECASE
 )
 
 # Reemplazamos por STORED AS PARQUET y apuntamos a data_parquet/
 def replacer(match):
     table_name = match.group(1)
-    return f"STORED AS PARQUET\nLOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/{table_name}/';"
+    return f"STORED AS PARQUET\nLOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/{table_name}/';"
 
 sql_content_parquet = pattern.sub(replacer, sql_content)
 

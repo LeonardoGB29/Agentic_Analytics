@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import List
 
 try:
     from .skill1 import normalizar_texto
@@ -343,7 +344,7 @@ def skill_2_generar_sql(intencion: str) -> str:
         ) from exc
 
 
-def listar_intenciones_disponibles() -> list[str]:
+def listar_intenciones_disponibles() -> List[str]:
     """
     Devuelve la lista de intenciones soportadas.
     """
