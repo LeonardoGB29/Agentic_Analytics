@@ -74,7 +74,7 @@ Desde `~/Agentic_Analytics`:
 
 ```bash
 export OLD_BUCKET="s3://tpcds-bigdata-kevin-2026"
-export NEW_BUCKET="s3://NOMBRE_DE_SU_BUCKET"
+export NEW_BUCKET="s3://tpcds-bigdata-unsa-2026"
 
 grep -R "$OLD_BUCKET" -n backend/data_generation
 sed -i "s#$OLD_BUCKET#$NEW_BUCKET#g" backend/data_generation/*.py backend/data_generation/*.sh backend/data_generation/*.sql
@@ -218,7 +218,7 @@ No se debe commitear una API key real al repositorio. Configurar la variable en
 la terminal del EMR:
 
 ```bash
-export GEMINI_API_KEY="REEMPLAZAR_CON_API_KEY_DE_PRUEBA"
+export GEMINI_API_KEY="KEy SCRET"
 unset GEMINI_DESACTIVADO
 ```
 
@@ -251,6 +251,36 @@ Resultado esperado:
 ```
 
 Dejar esta terminal abierta.
+
+### Si estás conectado por SSM (sin SSH directo)
+
+**Opción A — Port forwarding por SSM (recomendado, no requiere abrir puertos):**
+
+En tu computadora local (con AWS CLI instalado):
+
+```bash
+aws ssm start-session \
+  --target <INSTANCE_ID_DEL_MASTER> \
+  --document-name AWS-StartPortForwardingSession \
+  --parameters "portNumber=5000,localPortNumber=5001"
+```
+
+Reemplazar `<INSTANCE_ID_DEL_MASTER>` con el Instance ID EC2 del nodo master
+(visible en EMR → Cluster → Summary, o en EC2 → Instances).
+
+Luego abrir en el navegador local: `http://localhost:5001`
+
+---
+
+**Opción B — Escuchar en todas las interfaces (requiere puerto 5000 abierto en el Security Group):**
+
+```bash
+cd ~/Agentic_Analytics
+SERVER_HOST=0.0.0.0 PYTHONPATH=backend python3 backend/server.py
+```
+
+Luego acceder desde el navegador con la IP pública del master:
+`http://<IP_PUBLICA_EMR>:5000`
 
 ## 13. Abrir la UI desde la computadora local
 
