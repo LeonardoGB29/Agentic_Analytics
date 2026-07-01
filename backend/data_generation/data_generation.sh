@@ -17,7 +17,11 @@ echo " Generación de datos TPC-DS secuencial"
 echo " Scale: $SCALE"
 echo "=========================================="
 
-sudo dnf install -y gcc make flex bison byacc git
+if command -v dnf >/dev/null 2>&1; then
+    sudo dnf install -y gcc make flex bison byacc git
+else
+    sudo yum install -y gcc make flex bison byacc git
+fi
 
 cd "$HOME"
 
@@ -74,11 +78,7 @@ for tabla in "${TABLES[@]}"; do
 
     if [ -f "$file_path" ]; then
         echo ">> Subiendo $file_path a S3..."
-<<<<<<< Updated upstream
-        aws s3 cp "$file_path" "${S3_BUCKET}/${tabla}/"
-=======
         aws s3 cp "$file_path" "${S3_DATA_DIR}/${tabla}/"
->>>>>>> Stashed changes
         rm -f "$file_path"
     else
         echo "No se generó el archivo para $tabla"
