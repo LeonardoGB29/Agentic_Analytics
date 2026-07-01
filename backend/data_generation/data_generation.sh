@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCALE=10
-LOCAL_DIR="$HOME/tpcds_data"
-S3_BUCKET="s3://tpcds-bigdata-kevin-2026/data"
+# Cargar variables desde deploy.env si existe
+DIR_ACTUAL="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$DIR_ACTUAL/../../deploy.env" ]; then
+    source "$DIR_ACTUAL/../../deploy.env"
+fi
+
+SCALE=${SCALE:-10}
+LOCAL_DIR="${LOCAL_DIR:-$HOME/tpcds_data}"
+S3_BUCKET="${S3_BUCKET:-s3://tpcds-bigdata-kevin-2026}"
+S3_DATA_DIR="${S3_BUCKET}/data"
 
 echo "=========================================="
 echo " Generación de datos TPC-DS secuencial"
@@ -67,7 +74,11 @@ for tabla in "${TABLES[@]}"; do
 
     if [ -f "$file_path" ]; then
         echo ">> Subiendo $file_path a S3..."
+<<<<<<< Updated upstream
         aws s3 cp "$file_path" "${S3_BUCKET}/${tabla}/"
+=======
+        aws s3 cp "$file_path" "${S3_DATA_DIR}/${tabla}/"
+>>>>>>> Stashed changes
         rm -f "$file_path"
     else
         echo "No se generó el archivo para $tabla"

@@ -9,7 +9,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS dbgen_version (
     dv_cmdline_args   string                  
 )
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/dbgen_version/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/dbgen_version/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS customer_address (
     ca_address_sk     int,
@@ -27,7 +27,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS customer_address (
     ca_location_type  string
 )
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/customer_address/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/customer_address/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS customer_demographics (
     cd_demo_sk            int,
@@ -41,7 +41,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS customer_demographics (
     cd_dep_college_count  int
 )
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/customer_demographics/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/customer_demographics/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS date_dim (
     d_date_sk             int,
@@ -74,7 +74,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS date_dim (
     d_current_year        string
 )
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/date_dim/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/date_dim/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS warehouse (
     w_warehouse_sk    int,
@@ -93,7 +93,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS warehouse (
     w_gmt_offset      decimal(5,2)
 )
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/warehouse/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/warehouse/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS ship_mode (
     sm_ship_mode_sk   int,
@@ -104,7 +104,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS ship_mode (
     sm_contract       string
 )
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/ship_mode/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/ship_mode/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS time_dim (
     t_time_sk         int,
@@ -119,7 +119,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS time_dim (
     t_meal_time       string
 )
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/time_dim/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/time_dim/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS reason (
     r_reason_sk       int,
@@ -127,7 +127,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS reason (
     r_reason_desc     string
 )
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/reason/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/reason/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS income_band (
     ib_income_band_sk int,
@@ -135,7 +135,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS income_band (
     ib_upper_bound    int
 )
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/income_band/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/income_band/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS item (
     i_item_sk         int,
@@ -162,7 +162,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS item (
     i_product_name    string
 )
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/item/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/item/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS store (
     s_store_sk        int,
@@ -196,7 +196,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS store (
     s_tax_precentage  decimal(5,2)
 )
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/store/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/store/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS call_center (
     cc_call_center_sk int,
@@ -232,7 +232,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS call_center (
     cc_tax_percentage decimal(5,2)
 )
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/call_center/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/call_center/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS customer (
     c_customer_sk          int,
@@ -255,7 +255,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS customer (
     c_last_review_date_sk  int
 )
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/customer/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/customer/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS web_site (
     web_site_sk        int,
@@ -286,7 +286,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS web_site (
     web_tax_percentage decimal(5,2)
 )
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/web_site/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/web_site/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS store_returns (
     sr_returned_date_sk   int,
@@ -310,8 +310,9 @@ CREATE EXTERNAL TABLE IF NOT EXISTS store_returns (
     sr_store_credit       decimal(7,2),
     sr_net_loss           decimal(7,2)
 )
+PARTITIONED BY (sr_returned_year int)
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/store_returns/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/store_returns/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS household_demographics (
     hd_demo_sk        int,
@@ -321,7 +322,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS household_demographics (
     hd_vehicle_count  int
 )
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/household_demographics/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/household_demographics/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS web_page (
     wp_web_page_sk      int,
@@ -340,7 +341,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS web_page (
     wp_max_ad_count     int
 )
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/web_page/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/web_page/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS promotion (
     p_promo_sk        int,
@@ -364,7 +365,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS promotion (
     p_discount_active string
 )
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/promotion/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/promotion/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS catalog_page (
     cp_catalog_page_sk     int,
@@ -378,7 +379,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS catalog_page (
     cp_type                string
 )
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/catalog_page/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/catalog_page/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS inventory (
     inv_date_sk          int,
@@ -386,8 +387,9 @@ CREATE EXTERNAL TABLE IF NOT EXISTS inventory (
     inv_warehouse_sk     int,
     inv_quantity_on_hand int
 )
+PARTITIONED BY (inv_year int)
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/inventory/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/inventory/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS catalog_returns (
     cr_returned_date_sk      int,
@@ -418,8 +420,9 @@ CREATE EXTERNAL TABLE IF NOT EXISTS catalog_returns (
     cr_store_credit          decimal(7,2),
     cr_net_loss              decimal(7,2)
 )
+PARTITIONED BY (cr_returned_year int)
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/catalog_returns/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/catalog_returns/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS web_returns (
     wr_returned_date_sk      int,
@@ -447,8 +450,9 @@ CREATE EXTERNAL TABLE IF NOT EXISTS web_returns (
     wr_account_credit        decimal(7,2),
     wr_net_loss              decimal(7,2)
 )
+PARTITIONED BY (wr_returned_year int)
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/web_returns/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/web_returns/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS web_sales (
     ws_sold_date_sk          int,
@@ -486,8 +490,9 @@ CREATE EXTERNAL TABLE IF NOT EXISTS web_sales (
     ws_net_paid_inc_ship_tax decimal(7,2),
     ws_net_profit            decimal(7,2)
 )
+PARTITIONED BY (ws_sold_year int)
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/web_sales/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/web_sales/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS catalog_sales (
     cs_sold_date_sk          int,
@@ -525,8 +530,9 @@ CREATE EXTERNAL TABLE IF NOT EXISTS catalog_sales (
     cs_net_paid_inc_ship_tax decimal(7,2),
     cs_net_profit            decimal(7,2)
 )
+PARTITIONED BY (cs_sold_year int)
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/catalog_sales/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/catalog_sales/';
 
 CREATE EXTERNAL TABLE IF NOT EXISTS store_sales (
     ss_sold_date_sk       int,
@@ -553,5 +559,15 @@ CREATE EXTERNAL TABLE IF NOT EXISTS store_sales (
     ss_net_paid_inc_tax   decimal(7,2),
     ss_net_profit         decimal(7,2)
 )
+PARTITIONED BY (ss_sold_year int)
 STORED AS PARQUET
-LOCATION 's3://tpcds-bigdata-kevin-2026/data_parquet/store_sales/';
+LOCATION 's3://tpcds-bigdata-unsa-2026/data_parquet/store_sales/';
+
+-- Reparar particiones en Hive Metastore
+MSCK REPAIR TABLE store_sales;
+MSCK REPAIR TABLE catalog_sales;
+MSCK REPAIR TABLE web_sales;
+MSCK REPAIR TABLE store_returns;
+MSCK REPAIR TABLE catalog_returns;
+MSCK REPAIR TABLE web_returns;
+MSCK REPAIR TABLE inventory;

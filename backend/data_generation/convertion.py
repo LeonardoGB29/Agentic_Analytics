@@ -3,6 +3,26 @@ import re
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DecimalType, DateType
 
+def load_deploy_env():
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(3):
+        env_path = os.path.join(current_dir, "deploy.env")
+        if os.path.exists(env_path):
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    if "=" in line:
+                        k, v = line.split("=", 1)
+                        k = k.strip()
+                        v = v.strip().strip('"').strip("'")
+                        os.environ[k] = v
+            break
+        current_dir = os.path.dirname(current_dir)
+
+load_deploy_env()
+
 spark = SparkSession.builder \
     .appName("TPCDS DAT to Parquet") \
     .getOrCreate()
@@ -73,6 +93,33 @@ print(">> Cargando esquemas desde tablas.sql...")
 table_schemas = parse_schemas_from_sql(SQL_FILE_PATH)
 print(f">> Se cargaron {len(table_schemas)} esquemas de tablas.")
 
+from pyspark.sql.functions import coalesce, lit
+
+# Cargar date_dim primero y cachear para los joins de particiones
+print(">> Cargando date_dim para joins de partición...")
+try:
+    date_dim_schema = table_schemas.get("date_dim")
+    df_date_dim = spark.read \
+        .option("sep", "|") \
+        .option("header", "false") \
+        .option("dateFormat", "yyyy-MM-dd") \
+        .schema(date_dim_schema) \
+        .csv(f"{BASE_INPUT}/date_dim")
+    df_date_year = df_date_dim.select("d_date_sk", "d_year").cache()
+except Exception as e:
+    print(f"ADVERTENCIA -> No se pudo cachear date_dim: {e}. Se usará año default.")
+    df_date_year = None
+
+PARTITION_KEYS = {
+    "store_sales": ("ss_sold_date_sk", "ss_sold_year"),
+    "catalog_sales": ("cs_sold_date_sk", "cs_sold_year"),
+    "web_sales": ("ws_sold_date_sk", "ws_sold_year"),
+    "store_returns": ("sr_returned_date_sk", "sr_returned_year"),
+    "catalog_returns": ("cr_returned_date_sk", "cr_returned_year"),
+    "web_returns": ("wr_returned_date_sk", "wr_returned_year"),
+    "inventory": ("inv_date_sk", "inv_year"),
+}
+
 for t, schema in table_schemas.items():
     print(f"Procesando tabla: {t}")
 
@@ -86,13 +133,25 @@ for t, schema in table_schemas.items():
             .schema(schema) \
             .csv(f"{BASE_INPUT}/{t}")
 
-        df.write \
-            .mode("overwrite") \
-            .parquet(f"{BASE_OUTPUT}/{t}")
+        if t in PARTITION_KEYS and df_date_year is not None:
+            date_sk_col, partition_col = PARTITION_KEYS[t]
+            df = df.join(df_date_year, df[date_sk_col] == df_date_year["d_date_sk"], "left") \
+                   .withColumn(partition_col, coalesce(df_date_year["d_year"], lit(0))) \
+                   .drop("d_date_sk", "d_year")
 
-        print(f"OK -> {t} convertido a Parquet con esquema correcto.")
+            df.write \
+                .mode("overwrite") \
+                .partitionBy(partition_col) \
+                .parquet(f"{BASE_OUTPUT}/{t}")
+            print(f"OK -> {t} convertido a Parquet particionado por {partition_col}.")
+        else:
+            df.write \
+                .mode("overwrite") \
+                .parquet(f"{BASE_OUTPUT}/{t}")
+            print(f"OK -> {t} convertido a Parquet plano.")
     except Exception as e:
         if "PATH_NOT_FOUND" in str(e) or "does not exist" in str(e):
             print(f"ADVERTENCIA -> La ruta para la tabla '{t}' no existe en S3. Se omite.")
         else:
             print(f"ERROR -> Error al procesar la tabla '{t}': {e}")
+

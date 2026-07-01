@@ -9,6 +9,9 @@ venv/
 .env
 .env.*
 
+# Deploy (datos de conexion al cluster: ruta de la llave, DNS, etc.)
+deploy.env
+
 # macOS
 .DS_Store
 

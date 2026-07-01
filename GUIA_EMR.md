@@ -202,6 +202,43 @@ customer = 500000
 item = 102000
 ```
 
+## 9.5 Construir el Data Warehouse (esquema estrella)
+
+Este paso crea la base `dw_retail` con 4 dimensiones y 1 tabla de hechos
+particionada por año:
+
+**Opción A — Con Spark (recomendado):**
+
+```bash
+cd ~/Agentic_Analytics/backend/data_generation
+spark-submit --master yarn --deploy-mode client datawarehouse_spark.py
+```
+
+**Opción B — Con Hive:**
+
+```bash
+cd ~/Agentic_Analytics/backend/data_generation
+hive -f datawarehouse_hive.sql
+```
+
+Validar:
+
+```bash
+hive -e "USE dw_retail; SHOW TABLES;"
+hive -e "USE dw_retail; SHOW PARTITIONS fact_ventas;"
+hive -e "SELECT 'fact_ventas' AS t, COUNT(*) AS n FROM dw_retail.fact_ventas UNION ALL SELECT 'dim_cliente', COUNT(*) FROM dw_retail.dim_cliente UNION ALL SELECT 'dim_tienda', COUNT(*) FROM dw_retail.dim_tienda UNION ALL SELECT 'dim_producto', COUNT(*) FROM dw_retail.dim_producto UNION ALL SELECT 'dim_fecha', COUNT(*) FROM dw_retail.dim_fecha;"
+```
+
+Resultado esperado:
+
+```text
+fact_ventas  = 28800991
+dim_cliente  = 500000
+dim_tienda   ≈ 402
+dim_producto = 102000
+dim_fecha    = 73049
+```
+
 ## 10. Instalar dependencias del backend
 
 ```bash
