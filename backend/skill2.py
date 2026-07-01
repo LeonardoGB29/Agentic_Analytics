@@ -29,176 +29,171 @@ INTENCIONES_DISPONIBLES = [
 
 SQL_POR_INTENCION = {
     "top_20_clientes_compras": """SELECT
-    c.c_customer_sk,
-    c.c_customer_id,
-    CONCAT(COALESCE(c.c_first_name, ''), ' ', COALESCE(c.c_last_name, '')) AS cliente,
+    c.cliente_sk,
+    c.cliente_id,
+    c.nombre_completo AS cliente,
     COUNT(*) AS numero_compras
-FROM tpcds_parquet.store_sales ss
-JOIN tpcds_parquet.customer c
-    ON ss.ss_customer_sk = c.c_customer_sk
+FROM dw_retail.fact_ventas fv
+JOIN dw_retail.dim_cliente c
+    ON fv.cliente_sk = c.cliente_sk
 GROUP BY
-    c.c_customer_sk,
-    c.c_customer_id,
-    c.c_first_name,
-    c.c_last_name
+    c.cliente_sk,
+    c.cliente_id,
+    c.nombre_completo
 ORDER BY numero_compras DESC
 LIMIT 20""",
     "ventas_por_tienda": """SELECT
-    s.s_store_sk,
-    s.s_store_id,
-    s.s_store_name,
-    s.s_city,
-    s.s_country,
-    SUM(COALESCE(ss.ss_net_paid, 0)) AS ventas_totales
-FROM tpcds_parquet.store_sales ss
-JOIN tpcds_parquet.store s
-    ON ss.ss_store_sk = s.s_store_sk
+    t.tienda_sk,
+    t.tienda_id,
+    t.nombre_tienda,
+    t.ciudad,
+    t.pais,
+    SUM(COALESCE(fv.venta_neta, 0)) AS ventas_totales
+FROM dw_retail.fact_ventas fv
+JOIN dw_retail.dim_tienda t
+    ON fv.tienda_sk = t.tienda_sk
 GROUP BY
-    s.s_store_sk,
-    s.s_store_id,
-    s.s_store_name,
-    s.s_city,
-    s.s_country
+    t.tienda_sk,
+    t.tienda_id,
+    t.nombre_tienda,
+    t.ciudad,
+    t.pais
 ORDER BY ventas_totales DESC""",
     "ventas_por_mes": """SELECT
-    d.d_year AS anio,
-    d.d_moy AS mes,
-    SUM(COALESCE(ss.ss_net_paid, 0)) AS ventas_totales
-FROM tpcds_parquet.store_sales ss
-JOIN tpcds_parquet.date_dim d
-    ON ss.ss_sold_date_sk = d.d_date_sk
+    f.anio,
+    f.mes,
+    SUM(COALESCE(fv.venta_neta, 0)) AS ventas_totales
+FROM dw_retail.fact_ventas fv
+JOIN dw_retail.dim_fecha f
+    ON fv.fecha_sk = f.fecha_sk
 GROUP BY
-    d.d_year,
-    d.d_moy
+    f.anio,
+    f.mes
 ORDER BY
     anio,
     mes""",
     "ventas_por_dia_semana": """SELECT
-    d.d_day_name AS dia_semana,
-    SUM(COALESCE(ss.ss_net_paid, 0)) AS ventas_totales
-FROM tpcds_parquet.store_sales ss
-JOIN tpcds_parquet.date_dim d
-    ON ss.ss_sold_date_sk = d.d_date_sk
+    f.dia_semana,
+    SUM(COALESCE(fv.venta_neta, 0)) AS ventas_totales
+FROM dw_retail.fact_ventas fv
+JOIN dw_retail.dim_fecha f
+    ON fv.fecha_sk = f.fecha_sk
 GROUP BY
-    d.d_day_name
+    f.dia_semana
 ORDER BY ventas_totales DESC""",
     "top_productos_por_tienda": """WITH ventas_producto_tienda AS (
     SELECT
-        s.s_store_id,
-        s.s_store_name,
-        i.i_item_id,
-        COALESCE(i.i_product_name, i.i_item_desc) AS producto,
-        SUM(COALESCE(ss.ss_quantity, 0)) AS cantidad_vendida
-    FROM tpcds_parquet.store_sales ss
-    JOIN tpcds_parquet.store s
-        ON ss.ss_store_sk = s.s_store_sk
-    JOIN tpcds_parquet.item i
-        ON ss.ss_item_sk = i.i_item_sk
+        t.tienda_id,
+        t.nombre_tienda,
+        p.producto_id,
+        p.nombre_producto AS producto,
+        SUM(COALESCE(fv.cantidad, 0)) AS cantidad_vendida
+    FROM dw_retail.fact_ventas fv
+    JOIN dw_retail.dim_tienda t
+        ON fv.tienda_sk = t.tienda_sk
+    JOIN dw_retail.dim_producto p
+        ON fv.producto_sk = p.producto_sk
     GROUP BY
-        s.s_store_id,
-        s.s_store_name,
-        i.i_item_id,
-        i.i_product_name,
-        i.i_item_desc
+        t.tienda_id,
+        t.nombre_tienda,
+        p.producto_id,
+        p.nombre_producto
 ),
 ranking_productos AS (
     SELECT
-        s_store_id,
-        s_store_name,
-        i_item_id,
+        tienda_id,
+        nombre_tienda,
+        producto_id,
         producto,
         cantidad_vendida,
         ROW_NUMBER() OVER (
-            PARTITION BY s_store_id
+            PARTITION BY tienda_id
             ORDER BY cantidad_vendida DESC
         ) AS ranking
     FROM ventas_producto_tienda
 )
 SELECT
-    s_store_id,
-    s_store_name,
-    i_item_id,
+    tienda_id,
+    nombre_tienda,
+    producto_id,
     producto,
     cantidad_vendida,
     ranking
 FROM ranking_productos
 WHERE ranking <= 10
-ORDER BY s_store_id, ranking""",
+ORDER BY tienda_id, ranking""",
     "ticket_promedio_por_cliente": """SELECT
-    c.c_customer_sk,
-    c.c_customer_id,
-    CONCAT(COALESCE(c.c_first_name, ''), ' ', COALESCE(c.c_last_name, '')) AS cliente,
+    c.cliente_sk,
+    c.cliente_id,
+    c.nombre_completo AS cliente,
     COUNT(*) AS numero_compras,
-    SUM(COALESCE(ss.ss_net_paid, 0)) AS gasto_total,
-    AVG(COALESCE(ss.ss_net_paid, 0)) AS ticket_promedio
-FROM tpcds_parquet.store_sales ss
-JOIN tpcds_parquet.customer c
-    ON ss.ss_customer_sk = c.c_customer_sk
+    SUM(COALESCE(fv.venta_neta, 0)) AS gasto_total,
+    AVG(COALESCE(fv.venta_neta, 0)) AS ticket_promedio
+FROM dw_retail.fact_ventas fv
+JOIN dw_retail.dim_cliente c
+    ON fv.cliente_sk = c.cliente_sk
 GROUP BY
-    c.c_customer_sk,
-    c.c_customer_id,
-    c.c_first_name,
-    c.c_last_name
+    c.cliente_sk,
+    c.cliente_id,
+    c.nombre_completo
 ORDER BY ticket_promedio DESC
 LIMIT 20""",
     "productos_mayor_ingreso": """SELECT
-    i.i_item_sk,
-    i.i_item_id,
-    COALESCE(i.i_product_name, i.i_item_desc) AS producto,
-    i.i_category,
-    i.i_brand,
-    SUM(COALESCE(ss.ss_net_paid, 0)) AS ingreso_generado
-FROM tpcds_parquet.store_sales ss
-JOIN tpcds_parquet.item i
-    ON ss.ss_item_sk = i.i_item_sk
+    p.producto_sk,
+    p.producto_id,
+    p.nombre_producto AS producto,
+    p.categoria,
+    p.marca,
+    SUM(COALESCE(fv.venta_neta, 0)) AS ingreso_generado
+FROM dw_retail.fact_ventas fv
+JOIN dw_retail.dim_producto p
+    ON fv.producto_sk = p.producto_sk
 GROUP BY
-    i.i_item_sk,
-    i.i_item_id,
-    i.i_product_name,
-    i.i_item_desc,
-    i.i_category,
-    i.i_brand
+    p.producto_sk,
+    p.producto_id,
+    p.nombre_producto,
+    p.categoria,
+    p.marca
 ORDER BY ingreso_generado DESC
 LIMIT 20""",
     "top_clientes_gasto_total": """SELECT
-    c.c_customer_sk,
-    c.c_customer_id,
-    CONCAT(COALESCE(c.c_first_name, ''), ' ', COALESCE(c.c_last_name, '')) AS cliente,
-    SUM(COALESCE(ss.ss_net_paid, 0)) AS gasto_total
-FROM tpcds_parquet.store_sales ss
-JOIN tpcds_parquet.customer c
-    ON ss.ss_customer_sk = c.c_customer_sk
+    c.cliente_sk,
+    c.cliente_id,
+    c.nombre_completo AS cliente,
+    SUM(COALESCE(fv.venta_neta, 0)) AS gasto_total
+FROM dw_retail.fact_ventas fv
+JOIN dw_retail.dim_cliente c
+    ON fv.cliente_sk = c.cliente_sk
 GROUP BY
-    c.c_customer_sk,
-    c.c_customer_id,
-    c.c_first_name,
-    c.c_last_name
+    c.cliente_sk,
+    c.cliente_id,
+    c.nombre_completo
 ORDER BY gasto_total DESC
 LIMIT 20""",
     "ranking_mensual_ventas": """WITH ventas_tienda_mes AS (
     SELECT
-        d.d_year AS anio,
-        d.d_moy AS mes,
-        s.s_store_id,
-        s.s_store_name,
-        SUM(COALESCE(ss.ss_net_paid, 0)) AS ventas_totales
-    FROM tpcds_parquet.store_sales ss
-    JOIN tpcds_parquet.date_dim d
-        ON ss.ss_sold_date_sk = d.d_date_sk
-    JOIN tpcds_parquet.store s
-        ON ss.ss_store_sk = s.s_store_sk
+        f.anio,
+        f.mes,
+        t.tienda_id,
+        t.nombre_tienda,
+        SUM(COALESCE(fv.venta_neta, 0)) AS ventas_totales
+    FROM dw_retail.fact_ventas fv
+    JOIN dw_retail.dim_fecha f
+        ON fv.fecha_sk = f.fecha_sk
+    JOIN dw_retail.dim_tienda t
+        ON fv.tienda_sk = t.tienda_sk
     GROUP BY
-        d.d_year,
-        d.d_moy,
-        s.s_store_id,
-        s.s_store_name
+        f.anio,
+        f.mes,
+        t.tienda_id,
+        t.nombre_tienda
 ),
 ranking_mensual AS (
     SELECT
         anio,
         mes,
-        s_store_id,
-        s_store_name,
+        tienda_id,
+        nombre_tienda,
         ventas_totales,
         RANK() OVER (
             PARTITION BY anio, mes
@@ -209,109 +204,134 @@ ranking_mensual AS (
 SELECT
     anio,
     mes,
-    s_store_id,
-    s_store_name,
+    tienda_id,
+    nombre_tienda,
     ventas_totales,
     ranking_mensual
 FROM ranking_mensual
 WHERE ranking_mensual <= 10
 ORDER BY anio, mes, ranking_mensual""",
     "cinco_productos_mas_vendidos": """SELECT
-    i.i_item_id,
-    COALESCE(i.i_product_name, i.i_item_desc) AS producto,
-    SUM(COALESCE(ss.ss_quantity, 0)) AS cantidad_vendida
-FROM tpcds_parquet.store_sales ss
-JOIN tpcds_parquet.item i
-    ON ss.ss_item_sk = i.i_item_sk
+    p.producto_id,
+    p.nombre_producto AS producto,
+    SUM(COALESCE(fv.cantidad, 0)) AS cantidad_vendida
+FROM dw_retail.fact_ventas fv
+JOIN dw_retail.dim_producto p
+    ON fv.producto_sk = p.producto_sk
 GROUP BY
-    i.i_item_id,
-    i.i_product_name,
-    i.i_item_desc
+    p.producto_id,
+    p.nombre_producto
 ORDER BY cantidad_vendida DESC
 LIMIT 5""",
     "tienda_mayores_ventas": """SELECT
-    s.s_store_id,
-    s.s_store_name,
-    SUM(COALESCE(ss.ss_net_paid, 0)) AS ventas_totales
-FROM tpcds_parquet.store_sales ss
-JOIN tpcds_parquet.store s
-    ON ss.ss_store_sk = s.s_store_sk
+    t.tienda_id,
+    t.nombre_tienda,
+    SUM(COALESCE(fv.venta_neta, 0)) AS ventas_totales
+FROM dw_retail.fact_ventas fv
+JOIN dw_retail.dim_tienda t
+    ON fv.tienda_sk = t.tienda_sk
 GROUP BY
-    s.s_store_id,
-    s.s_store_name
+    t.tienda_id,
+    t.nombre_tienda
 ORDER BY ventas_totales DESC
 LIMIT 1""",
     "mes_mayores_ingresos": """SELECT
-    d.d_year AS anio,
-    d.d_moy AS mes,
-    SUM(COALESCE(ss.ss_net_paid, 0)) AS ingresos_totales
-FROM tpcds_parquet.store_sales ss
-JOIN tpcds_parquet.date_dim d
-    ON ss.ss_sold_date_sk = d.d_date_sk
+    f.anio,
+    f.mes,
+    SUM(COALESCE(fv.venta_neta, 0)) AS ingresos_totales
+FROM dw_retail.fact_ventas fv
+JOIN dw_retail.dim_fecha f
+    ON fv.fecha_sk = f.fecha_sk
 GROUP BY
-    d.d_year,
-    d.d_moy
+    f.anio,
+    f.mes
 ORDER BY ingresos_totales DESC
 LIMIT 1""",
     "diez_mejores_clientes": """SELECT
-    c.c_customer_sk,
-    c.c_customer_id,
-    CONCAT(COALESCE(c.c_first_name, ''), ' ', COALESCE(c.c_last_name, '')) AS cliente,
-    SUM(COALESCE(ss.ss_net_paid, 0)) AS gasto_total
-FROM tpcds_parquet.store_sales ss
-JOIN tpcds_parquet.customer c
-    ON ss.ss_customer_sk = c.c_customer_sk
+    c.cliente_sk,
+    c.cliente_id,
+    c.nombre_completo AS cliente,
+    SUM(COALESCE(fv.venta_neta, 0)) AS gasto_total
+FROM dw_retail.fact_ventas fv
+JOIN dw_retail.dim_cliente c
+    ON fv.cliente_sk = c.cliente_sk
 GROUP BY
-    c.c_customer_sk,
-    c.c_customer_id,
-    c.c_first_name,
-    c.c_last_name
+    c.cliente_sk,
+    c.cliente_id,
+    c.nombre_completo
 ORDER BY gasto_total DESC
 LIMIT 10""",
 }
 
 
-ESQUEMA_TPCDS = """Base de datos: tpcds_parquet
+ESQUEMA_TPCDS = """Base de datos: dw_retail
 
-Tabla tpcds_parquet.customer:
-- c_customer_sk INT
-- c_customer_id STRING
-- c_first_name STRING
-- c_last_name STRING
-- c_email_address STRING
+Tabla dw_retail.dim_cliente:
+- cliente_sk INT
+- cliente_id STRING
+- nombre_completo STRING
+- email STRING
+- ciudad STRING
+- estado STRING
+- pais STRING
+- genero STRING
+- nivel_educativo STRING
+- potencial_compra STRING
 
-Tabla tpcds_parquet.item:
-- i_item_sk INT
-- i_item_id STRING
-- i_item_desc STRING
-- i_product_name STRING
-- i_category STRING
-- i_brand STRING
+Tabla dw_retail.dim_producto:
+- producto_sk INT
+- producto_id STRING
+- nombre_producto STRING
+- categoria STRING
+- clase STRING
+- marca STRING
+- fabricante STRING
+- precio_actual DOUBLE
+- costo_mayoreo DOUBLE
 
-Tabla tpcds_parquet.store:
-- s_store_sk INT
-- s_store_id STRING
-- s_store_name STRING
-- s_city STRING
-- s_state STRING
-- s_country STRING
+Tabla dw_retail.dim_tienda:
+- tienda_sk INT
+- tienda_id STRING
+- nombre_tienda STRING
+- ciudad STRING
+- estado STRING
+- pais STRING
+- gerente STRING
+- mercado_desc STRING
 
-Tabla tpcds_parquet.date_dim:
-- d_date_sk INT
-- d_date DATE
-- d_year INT
-- d_moy INT
-- d_day_name STRING
+Tabla dw_retail.dim_fecha:
+- fecha_sk INT
+- fecha DATE
+- anio INT
+- mes INT
+- dia_mes INT
+- dia_semana STRING
+- trimestre INT
+- es_feriado STRING
+- es_fin_semana STRING
 
-Tabla tpcds_parquet.store_sales:
-- ss_sold_date_sk INT
-- ss_item_sk INT
-- ss_customer_sk INT
-- ss_store_sk INT
-- ss_ticket_number STRING
-- ss_quantity INT
-- ss_net_paid DOUBLE
-- ss_net_profit DOUBLE"""
+Tabla dw_retail.fact_ventas:
+- venta_sk BIGINT
+- cliente_sk INT
+- tienda_sk INT
+- producto_sk INT
+- fecha_sk INT
+- ticket_number INT
+- cantidad INT
+- precio_venta DOUBLE
+- descuento DOUBLE
+- venta_neta DOUBLE
+- venta_neta_con_impuesto DOUBLE
+- impuesto DOUBLE
+- ganancia_neta DOUBLE
+- anio_venta INT
+
+Relaciones del esquema estrella:
+- fact_ventas.cliente_sk = dim_cliente.cliente_sk
+- fact_ventas.tienda_sk = dim_tienda.tienda_sk
+- fact_ventas.producto_sk = dim_producto.producto_sk
+- fact_ventas.fecha_sk = dim_fecha.fecha_sk
+- fact_ventas esta particionada por anio_venta"""
 
 
 FEW_SHOTS_SQL = f"""Intencion: cinco_productos_mas_vendidos
@@ -378,12 +398,13 @@ Ejemplos few-shot:
 {FEW_SHOTS_SQL}
 
 Reglas obligatorias:
-- Usa siempre nombres de tablas calificados con base de datos, por ejemplo tpcds_parquet.store_sales.
-- No incluyas USE tpcds_parquet.
+- Usa siempre nombres de tablas calificados con base de datos, por ejemplo dw_retail.fact_ventas.
+- No incluyas USE dw_retail.
 - No agregues punto y coma al final.
 - Devuelve unicamente SQL valido para Hive/Spark.
 - No uses Markdown, explicaciones, comentarios ni texto adicional.
 - Usa COALESCE en agregaciones numericas cuando aplique.
+- Usa el esquema estrella: fact_ventas como tabla de hechos y dimensiones dim_cliente, dim_tienda, dim_producto y dim_fecha.
 
 Intencion solicitada:
 {intencion}
@@ -412,12 +433,18 @@ def validar_sql_generado(sql: str) -> None:
     for palabra in prohibidas:
         if re.search(rf"\b{palabra}\b", sql_upper):
             raise ValueError(f"El SQL contiene una operacion no permitida: {palabra}.")
-    if "tpcds_parquet." not in sql_limpio:
-        raise ValueError("El SQL debe usar tablas calificadas con tpcds_parquet.")
+    if "dw_retail." not in sql_limpio:
+        raise ValueError("El SQL debe usar tablas calificadas con dw_retail.")
 
-    tablas_permitidas = {"customer", "item", "store", "date_dim", "store_sales"}
+    tablas_permitidas = {
+        "fact_ventas",
+        "dim_cliente",
+        "dim_tienda",
+        "dim_producto",
+        "dim_fecha",
+    }
     tablas_usadas = set(
-        re.findall(r"tpcds_parquet\.([a-zA-Z_][a-zA-Z0-9_]*)", sql_limpio)
+        re.findall(r"dw_retail\.([a-zA-Z_][a-zA-Z0-9_]*)", sql_limpio)
     )
     tablas_invalidas = tablas_usadas - tablas_permitidas
     if tablas_invalidas:

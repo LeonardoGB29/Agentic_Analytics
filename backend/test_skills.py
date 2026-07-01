@@ -122,20 +122,20 @@ def test_skill_2_genera_sql_valido_para_todas_las_intenciones():
     for intencion in listar_intenciones_disponibles():
         sql = skill_2_generar_sql(intencion)
         assert sql.lstrip().upper().startswith(("SELECT", "WITH"))
-        assert "tpcds_parquet." in sql
-        assert "USE TPCDS_PARQUET" not in sql.upper()
+        assert "dw_retail." in sql
+        assert "USE DW_RETAIL" not in sql.upper()
         assert not sql.rstrip().endswith(";")
 
 
 def test_skill_2_sql_contiene_tablas_esperadas_en_casos_clave():
     sql = skill_2_generar_sql("top_productos_por_tienda")
-    assert "tpcds_parquet.store_sales" in sql
-    assert "tpcds_parquet.store" in sql
-    assert "tpcds_parquet.item" in sql
+    assert "dw_retail.fact_ventas" in sql
+    assert "dw_retail.dim_tienda" in sql
+    assert "dw_retail.dim_producto" in sql
     assert "ROW_NUMBER()" in sql
 
     sql = skill_2_generar_sql("ranking_mensual_ventas")
-    assert "tpcds_parquet.date_dim" in sql
+    assert "dw_retail.dim_fecha" in sql
     assert "RANK()" in sql
 
 
@@ -163,7 +163,7 @@ def test_skill_1_2_3_end_to_end_con_preguntas_reales():
     for pregunta, fragmento_sql, motor_esperado in casos:
         sql, motor = skill_1_2_3(pregunta)
         assert fragmento_sql in sql
-        assert "tpcds_parquet.store_sales" in sql
+        assert "dw_retail.fact_ventas" in sql
         assert motor == motor_esperado
 
 
@@ -208,18 +208,18 @@ def test_plan_dinamico_genera_sql_nuevo_validado():
         "tipo": "dinamica",
         "intencion": "rentabilidad_por_estado",
         "sql": (
-            "SELECT s.s_state, "
-            "SUM(COALESCE(ss.ss_net_profit, 0)) AS utilidad_total "
-            "FROM tpcds_parquet.store_sales ss "
-            "JOIN tpcds_parquet.store s ON ss.ss_store_sk = s.s_store_sk "
-            "GROUP BY s.s_state ORDER BY utilidad_total DESC"
+            "SELECT t.estado, "
+            "SUM(COALESCE(fv.ganancia_neta, 0)) AS utilidad_total "
+            "FROM dw_retail.fact_ventas fv "
+            "JOIN dw_retail.dim_tienda t ON fv.tienda_sk = t.tienda_sk "
+            "GROUP BY t.estado ORDER BY utilidad_total DESC"
         ),
         "motor": "spark",
     }
 
     sql, motor = _resolver_plan(plan)
-    assert "ss_net_profit" in sql
-    assert "tpcds_parquet.store" in sql
+    assert "ganancia_neta" in sql
+    assert "dw_retail.dim_tienda" in sql
     assert motor == "spark"
 
 
@@ -232,7 +232,7 @@ def test_plan_de_catalogo_reutiliza_sql_aprobado():
             "motor": "spark",
         }
     )
-    assert "tpcds_parquet.date_dim" in sql
+    assert "dw_retail.dim_fecha" in sql
     assert motor == "spark"
 
 
@@ -241,13 +241,13 @@ def test_plan_dinamico_rechaza_sql_peligroso_o_tablas_inventadas():
         {
             "tipo": "dinamica",
             "intencion": "borrar_datos",
-            "sql": "SELECT * FROM tpcds_parquet.customer; DROP TABLE tpcds_parquet.customer",
+            "sql": "SELECT * FROM dw_retail.customer; DROP TABLE dw_retail.customer",
             "motor": "hive",
         },
         {
             "tipo": "dinamica",
             "intencion": "ventas_web",
-            "sql": "SELECT * FROM tpcds_parquet.web_sales",
+            "sql": "SELECT * FROM dw_retail.web_sales",
             "motor": "spark",
         },
     ]

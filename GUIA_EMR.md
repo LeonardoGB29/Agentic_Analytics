@@ -207,6 +207,10 @@ item = 102000
 Este paso crea la base `dw_retail` con 4 dimensiones y 1 tabla de hechos
 particionada por año:
 
+> Importante: el agente analitico usa `dw_retail` para generar y ejecutar sus
+> consultas. Si se omite este paso, la UI puede levantar, pero las preguntas
+> fallaran porque no existiran `dw_retail.fact_ventas` ni sus dimensiones.
+
 **Opción A — Con Spark (recomendado):**
 
 ```bash

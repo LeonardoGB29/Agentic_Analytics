@@ -163,8 +163,9 @@ DECISION:
 
 REGLAS SQL DINAMICO:
 - Solo SELECT o WITH + SELECT.
-- Usa exclusivamente las cinco tablas y columnas del esquema.
-- Califica cada tabla fisica con tpcds_parquet.
+- Usa exclusivamente las tablas y columnas del esquema estrella dw_retail.
+- Califica cada tabla fisica con dw_retail.
+- Usa dw_retail.fact_ventas como tabla de hechos y las dimensiones dim_cliente, dim_tienda, dim_producto y dim_fecha cuando sean necesarias.
 - No uses USE, DDL, DML, comentarios ni punto y coma.
 - Devuelve una sola sentencia.
 - Usa COALESCE en agregaciones numericas cuando corresponda.

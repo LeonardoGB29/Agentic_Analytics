@@ -6,6 +6,17 @@ con TPC-DS sobre Hive y Spark.
 Para levantar el proyecto completo en Amazon EMR con S3, Hive, Spark, backend,
 frontend y Gemini, revisar [GUIA_EMR.md](GUIA_EMR.md).
 
+El agente consulta el Data Warehouse estrella `dw_retail`, creado a partir de
+las tablas TPC-DS en Parquet. Antes de levantar el servidor se debe construir:
+
+```bash
+cd backend/data_generation
+spark-submit --master yarn --deploy-mode client datawarehouse_spark.py
+```
+
+El esquema usado por el agente esta documentado en
+[backend/SCHEMA_DW_AGENTE.md](backend/SCHEMA_DW_AGENTE.md).
+
 ## Que hace
 
 `backend/skills_1_2_3.py` recibe una pregunta en lenguaje natural, identifica la
@@ -88,13 +99,13 @@ El agente usa un flujo hibrido en una sola llamada a Gemini:
 
 1. Si la pregunta coincide con una intencion conocida, Gemini devuelve
    `tipo="catalogo"` y se usa el SQL aprobado en `skill2.py`.
-2. Si es una pregunta analitica nueva que puede resolverse con las cinco tablas,
+2. Si es una pregunta analitica nueva que puede resolverse con el esquema estrella,
    Gemini devuelve `tipo="dinamica"`, genera el SQL y selecciona Hive o Spark.
 3. Si la pregunta no es analitica o requiere columnas que no existen, devuelve
    `tipo="no_analitica"` y el sistema la rechaza.
 
 El SQL dinamico se valida antes de llegar a Skill 4. Solo se permiten consultas
-`SELECT`/`WITH`, las tablas de `tpcds_parquet` y una unica sentencia. Se
+`SELECT`/`WITH`, las tablas de `dw_retail` y una unica sentencia. Se
 rechazan DDL, DML, comentarios, tablas inventadas y operaciones destructivas.
 
 ## Archivos
@@ -105,6 +116,7 @@ backend/skill1.py        # Skill 1: interpretacion de intencion con Gemini
 backend/skill2.py        # Skill 2: generacion de SQL con Gemini
 backend/skill3.py        # Skill 3: seleccion de motor con Gemini
 backend/skills_1_2_3.py  # orquestador que devuelve (sql, motor)
+backend/SCHEMA_DW_AGENTE.md # contrato de tablas del esquema estrella
 backend/test_skills.py   # pruebas simples con assert
 ```
 
